@@ -75,7 +75,6 @@ int bt_audio_initialize(void)
 	}
 	error = bluetooth_telephony_init((void *)_bt_telephony_event_proxy, NULL);
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (BT_ERROR_NONE != error) {
 		BT_ERR("[%s] (0x%08x)",
 			_bt_convert_error_to_string(error), error);
@@ -96,7 +95,6 @@ int bt_audio_deinitialize(void)
 	}
 	error = bluetooth_telephony_deinit();
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (BT_ERROR_NONE != error) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -179,7 +177,7 @@ int bt_ag_notify_speaker_gain(int gain)
 
 	BT_CHECK_INIT_STATUS();
 	error = bluetooth_telephony_set_speaker_gain((unsigned short)gain);
-	error = _bt_get_error_code(error);
+	error = _bt_convert_telephony_error_code(error);
 	if (BT_ERROR_NONE != error) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -193,7 +191,7 @@ int bt_ag_get_speaker_gain(int *gain)
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(gain);
 	error = bluetooth_telephony_get_headset_volume((unsigned int *)gain);
-	error = _bt_get_error_code(error);
+	error = _bt_convert_telephony_error_code(error);
 	if (BT_ERROR_NONE != error) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -203,15 +201,20 @@ int bt_ag_get_speaker_gain(int *gain)
 int bt_ag_is_nrec_enabled(bool *enabled)
 {
 	int error;
+	gboolean is_enabled = false;
 
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(enabled);
 
-	error = bluetooth_telephony_is_nrec_enabled((gboolean *)enabled);
-	error = _bt_get_error_code(error);
+	error = bluetooth_telephony_is_nrec_enabled(&is_enabled);
+	error = _bt_convert_telephony_error_code(error);
 	if (BT_ERROR_NONE != error) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
+	if (is_enabled)
+		*enabled = true;
+	else
+		*enabled = false;
 
 	return error;
 }
@@ -257,7 +260,6 @@ int bt_ag_open_sco(void)
 	BT_CHECK_INIT_STATUS();
 	error = bluetooth_telephony_audio_open();
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -271,7 +273,6 @@ int bt_ag_close_sco(void)
 	BT_CHECK_INIT_STATUS();
 	error = bluetooth_telephony_audio_close();
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -282,7 +283,10 @@ int bt_ag_is_sco_opened(bool *opened)
 {
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(opened);
-	*opened = bluetooth_telephony_is_sco_connected();
+	if (bluetooth_telephony_is_sco_connected())
+		*opened = true;
+	else
+		*opened = false;
 	return BT_ERROR_NONE;
 }
 
@@ -338,7 +342,6 @@ int bt_ag_notify_call_event(bt_ag_call_event_e event, unsigned int call_id, cons
 		error = BT_ERROR_INVALID_PARAMETER;
 	}
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -357,7 +360,6 @@ int bt_ag_notify_call_list(bt_call_list_h list)
 	call_count = g_list_length(handle->list);
 	error = bluetooth_telephony_set_call_status((void *)handle->list, call_count);
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
@@ -374,7 +376,6 @@ int bt_ag_notify_voice_recognition_state(bool state)
 	else
 		error = bluetooth_telephony_stop_voice_recognition();
 	error = _bt_convert_telephony_error_code(error);
-	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}

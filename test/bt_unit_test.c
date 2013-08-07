@@ -45,6 +45,10 @@ bt_gatt_attribute_h service_clone[MAX_SERVICES];
 bt_gatt_attribute_h characteristics[MAX_SERVICES];
 bt_gatt_attribute_h characteristics_services[MAX_SERVICES];
 
+static unsigned char *hash = NULL;
+static unsigned char *randomizer = NULL;
+int hash_len;
+int rand_len;
 
 bt_call_list_h call_list;
 GMainLoop *main_loop = NULL;
@@ -69,6 +73,9 @@ tc_table_t tc_table[] = {
 	{"bt_adapter_get_visibility"		, 11},
 	{"bt_adapter_set_device_discovery_state_changed_cb"	, 12},
 	{"bt_adapter_unset_device_discovery_state_changed_cb"	, 13},
+	{"bt_adapter_get_local_oob_data" , 14},
+	{"bt_adapter_set_remote_oob_data" , 15},
+	{"bt_adapter_remove_remote_oob_data"	, 16},
 
 	/* Socket functions */
 	{"bt_socket_create_rfcomm"		, 50},
@@ -446,7 +453,7 @@ void __bt_avrcp_scan_mode_changed_cb(bt_avrcp_scan_mode_e scan, void *user_data)
 int test_input_callback(void *data)
 {
 	int ret = 0;
-	long test_id = (long)data;
+	int test_id = (int)data;
 
 	switch (test_id) {
 	case 0x00ff:
@@ -557,6 +564,45 @@ int test_input_callback(void *data)
 		if (ret < BT_ERROR_NONE)
 			TC_PRT("failed with [0x%04x]", ret);
 		break;
+
+	case 14: {
+		ret = bt_adapter_get_local_oob_data(&hash, &randomizer, &hash_len, &rand_len);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		} else {
+			TC_PRT("hash = [%s]", hash);
+			TC_PRT("randomizer = [%s]", randomizer);
+		}
+		break;
+	}
+
+	case 15: {
+		char *address;
+
+		address = g_strdup("00:02:18:2F:78:32");
+
+		TC_PRT("remote address = [%s]", address);
+
+		ret = bt_adapter_set_remote_oob_data(address, hash, randomizer, hash_len, rand_len);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+
+	case 16: {
+		char *address;
+
+		address = g_strdup("00:02:18:2F:78:32");
+
+		TC_PRT("remote address = [%s]", address);
+
+		ret = bt_adapter_remove_remote_oob_data(address);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
 
 	/* Socket functions */
 	case 50: {
@@ -1153,8 +1199,8 @@ static gboolean key_event_cb(GIOChannel *chan,
 {
 	char buf[BUFFER_LEN] = { 0 };
 
-	gsize len = 0;
-	long test_id;
+	unsigned int len = 0;
+	int test_id;
 
 	memset(buf, 0, sizeof(buf));
 

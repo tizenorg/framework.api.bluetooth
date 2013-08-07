@@ -27,15 +27,23 @@
 int bt_hdp_register_sink_app(unsigned short data_type, char **app_id)
 {
 	int error = BT_ERROR_NONE;
+	char *app_handle = NULL;
 
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(app_id);
-	error = bluetooth_hdp_activate(data_type, HDP_ROLE_SINK, HDP_QOS_ANY, app_id);
+	error = bluetooth_hdp_activate(data_type, HDP_ROLE_SINK, HDP_QOS_ANY, &app_handle);
 	error = _bt_get_error_code(error);
 	if (BT_ERROR_NONE != error) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+		return error;
 	}
-	return error;
+
+	*app_id = strdup(app_handle);
+	if (*app_id == NULL) {
+		return BT_ERROR_OUT_OF_MEMORY;
+	}
+
+	return BT_ERROR_NONE;
 }
 
 int bt_hdp_unregister_sink_app(const char *app_id)

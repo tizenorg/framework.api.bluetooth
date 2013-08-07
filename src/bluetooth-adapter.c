@@ -458,3 +458,73 @@ int bt_adapter_is_discovering(bool *is_discovering)
 	}
 }
 
+int bt_adapter_get_local_oob_data(unsigned char **hash, unsigned char **randomizer,
+					int *hash_len, int *randomizer_len)
+{
+	int ret = BT_ERROR_NONE;
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(hash);
+	BT_CHECK_INPUT_PARAMETER(randomizer);
+	BT_CHECK_INPUT_PARAMETER(hash_len);
+	BT_CHECK_INPUT_PARAMETER(randomizer_len);
+
+	bt_oob_data_t oob_data;
+
+	ret = _bt_get_error_code(bluetooth_oob_read_local_data(&oob_data));
+	if (BT_ERROR_NONE == ret) {
+		*hash = g_memdup(oob_data.hash, BLUETOOTH_OOB_DATA_LENGTH);
+		*randomizer = g_memdup(oob_data.randomizer,
+						BLUETOOTH_OOB_DATA_LENGTH);
+		*hash_len = BLUETOOTH_OOB_DATA_LENGTH;
+		*randomizer_len = BLUETOOTH_OOB_DATA_LENGTH;
+	} else {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+	}
+	return ret;
+}
+
+int bt_adapter_set_remote_oob_data(const char *remote_address,
+				unsigned char *hash, unsigned char *randomizer,
+				int hash_len, int randomizer_len)
+{
+	int ret = BT_ERROR_NONE;
+	bluetooth_device_address_t addr_hex = { {0,} };
+	bt_oob_data_t oob_data = { {0},};
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(remote_address);
+
+	_bt_convert_address_to_hex(&addr_hex, remote_address);
+
+	if (hash != NULL && randomizer != NULL) {
+		memcpy(oob_data.hash, hash, hash_len);
+		memcpy(oob_data.randomizer, randomizer, randomizer_len);
+		oob_data.hash_len = hash_len;
+		oob_data.randomizer_len = randomizer_len;
+	}
+
+	ret = _bt_get_error_code(bluetooth_oob_add_remote_data(&addr_hex, &oob_data));
+	if (BT_ERROR_NONE != ret) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+	}
+	return ret;
+}
+
+int bt_adapter_remove_remote_oob_data(const char *remote_address)
+{
+	int ret = BT_ERROR_NONE;
+	bluetooth_device_address_t addr_hex = { {0,} };
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(remote_address);
+
+	_bt_convert_address_to_hex(&addr_hex, remote_address);
+
+	ret = _bt_get_error_code(bluetooth_oob_remove_remote_data(&addr_hex));
+	if (BT_ERROR_NONE != ret) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+	}
+	return ret;
+}
+

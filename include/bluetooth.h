@@ -1327,6 +1327,69 @@ int bt_adapter_set_device_discovery_state_changed_cb(bt_adapter_device_discovery
  */
 int bt_adapter_unset_device_discovery_state_changed_cb(void);
 
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Get the Hash and Randmoizer value, synchronously.
+ *
+ * @param[out] hash The hash value recieved from the controller
+ * @param[out] randomizer The hash value recieved from the controller
+ * @param[out] hash_len The length of the hash value
+ * @param[out] randomizer_len The length of the randomizer value
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #BT_ERROR_NOT_ENABLED  Not enabled
+ * @retval #BT_ERROR_OPERATION_FAILED  Operation failed
+ *
+ * @pre The state of local Bluetooth must be #BT_ADAPTER_ENABLED with bt_adapter_enable().
+ * @pre The Bluetooth service must be initialized with bt_initialize().
+ * @see bt_initialize()
+ */
+int bt_adapter_get_local_oob_data(unsigned char **hash, unsigned char **randomizer,
+					int *hash_len, int *randomizer_len);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Sets  the Hash and Randmoizer value, synchronously.
+ *
+ * @param[in] remote_address Remote device address
+ * @param[in] hash The hash value recieved from the controller
+ * @param[in] randomizer The hash value recieved from the controller
+ * @param[in] hash_len The length of the hash value
+ * @param[in] randomizer_len The length of the randomizer value
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #BT_ERROR_NOT_ENABLED  Not enabled
+ * @retval #BT_ERROR_OPERATION_FAILED  Operation failed
+ *
+ * @pre The state of local Bluetooth must be #BT_ADAPTER_ENABLED with bt_adapter_enable().
+ * @pre The Bluetooth service must be initialized with bt_initialize().
+ * @see bt_initialize()
+ */
+int bt_adapter_set_remote_oob_data(const char *remote_address,
+				unsigned char *hash, unsigned char *randomizer,
+				int hash_len, int randomizer_len);
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Sets  the Hash and Randmoizer value, synchronously.
+ *
+ * @param[in] remote_address Remote device address
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #BT_ERROR_NOT_ENABLED  Not enabled
+ * @retval #BT_ERROR_OPERATION_FAILED  Operation failed
+ *
+ * @pre The state of local Bluetooth must be #BT_ADAPTER_ENABLED with bt_adapter_enable().
+ * @pre The Bluetooth service must be initialized with bt_initialize().
+ * @see bt_initialize()
+ */
+int bt_adapter_remove_remote_oob_data(const char *remote_address);
+
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
@@ -3420,12 +3483,14 @@ int bt_avrcp_unset_scan_mode_changed_cb(void);
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_HDP_MODULE
  * @brief Registers an application that acts as the @a Sink role of HDP(Health Device Profile).
+ * @remarks The @a app_id must be released with free() by you.
  * @param[in] data_type  The data type of MDEP. This value is defined in ISO/IEEE 11073-20601 spec.
  * For example, pulse oximeter is 0x1004 and blood pressure monitor is 0x1007.
  * @param[out] app_id  The ID of application
  * @return 0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
  * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_OUT_OF_MEMORY  Out of memory
  * @retval #BT_ERROR_NOT_ENABLED  Not enabled
  * @pre The Bluetooth must be enabled with bt_adapter_enable().
  * @see bt_adapter_enable()
@@ -3712,7 +3777,7 @@ typedef bool (*bt_gatt_included_service_cb) (bt_gatt_attribute_h service, void *
  */
 int bt_gatt_foreach_included_services(bt_gatt_attribute_h service, bt_gatt_included_service_cb callback, void *user_data);
 
-/*
+/**
  * @ingroup  CAPI_NETWORK_BLUETOOTH_GATT_MODULE
  * @brief  Called when a characteristic in service is changed.
  * @param[in]  characteristic  The attribute handle of characteristic
