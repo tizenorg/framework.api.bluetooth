@@ -42,7 +42,8 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 %make_install
-
+mkdir -p %{buildroot}/usr/share/license
+cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
 
 %post -p /sbin/ldconfig
 
@@ -51,6 +52,7 @@ rm -rf %{buildroot}
 %files
 %manifest bluetooth.manifest
 %{_libdir}/libcapi-network-bluetooth.so.*
+/usr/share/license/%{name}
 
 %files devel
 %{_includedir}/network/bluetooth.h
