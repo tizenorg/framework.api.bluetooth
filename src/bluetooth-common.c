@@ -68,7 +68,9 @@ static bt_event_sig_event_slot_s bt_event_slot_container[] = {
 	{BT_EVENT_HID_CONNECTION_STATUS, NULL, NULL},
 	{BT_EVENT_DEVICE_CONNECTION_STATUS, NULL, NULL},
 	{BT_EVENT_GATT_CHARACTERISTIC_DISCOVERED, NULL, NULL},
-	{BT_EVENT_GATT_VALUE_CHANGED, NULL, NULL}
+	{BT_EVENT_GATT_VALUE_CHANGED, NULL, NULL},
+	{BT_EVENT_GATT_READ_CHARACTERISTIC, NULL, NULL},
+	{BT_EVENT_GATT_WRITE_CHARACTERISTIC, NULL, NULL}
 };
 
 /*
@@ -184,6 +186,8 @@ int _bt_get_error_code(int origin_error)
 		return BT_ERROR_REMOTE_DEVICE_NOT_FOUND;
 	case BLUETOOTH_ERROR_SERVICE_SEARCH_ERROR:
 		return BT_ERROR_SERVICE_SEARCH_FAILED;
+	case BLUETOOTH_ERROR_PERMISSION_DEINED :
+		return BT_ERROR_PERMISSION_DENIED;
 	case BLUETOOTH_ERROR_SERVICE_NOT_FOUND:
 	case BLUETOOTH_ERROR_PARING_FAILED:
 	case BLUETOOTH_ERROR_MAX_CONNECTION:
@@ -526,6 +530,7 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		    (_bt_get_error_code(param->result), BT_ADAPTER_DEVICE_DISCOVERY_FINISHED, NULL, bt_event_slot_container[event_index].user_data);
 		break;
 	case BLUETOOTH_EVENT_REMOTE_DEVICE_NAME_UPDATED:
+	case BLUETOOTH_EVENT_REMOTE_DEVICE_FOUND:
 		BT_INFO("bt_adapter_device_discovery_state_changed_cb() will be called with BT_ADAPTER_DEVICE_DISCOVERY_FOUND");
 		if (__bt_get_bt_adapter_device_discovery_info_s(&discovery_info, (bluetooth_device_info_t *)(param->param_data)) == BT_ERROR_NONE) {
 			((bt_adapter_device_discovery_state_changed_cb)bt_event_slot_container[event_index].callback)
@@ -1062,7 +1067,11 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		  bt_event_slot_container[event_index].user_data);
 
 		break;
+	case BLUETOOTH_EVENT_GATT_READ_CHAR:
+		BT_INFO("BLUETOOTH_EVENT_GATT_READ_CHAR");
+		break;
 	default:
+		BT_INFO("__bt_event_proxy default case %d",event);
 		break;
 	}
 }
@@ -1161,6 +1170,11 @@ static int __bt_get_cb_index(int event)
 	case BLUETOOTH_EVENT_DEVICE_CONNECTED:
 	case BLUETOOTH_EVENT_DEVICE_DISCONNECTED:
 		return BT_EVENT_DEVICE_CONNECTION_STATUS;
+	case BLUETOOTH_EVENT_GATT_CONNECTED:
+	case BLUETOOTH_EVENT_GATT_DISCONNECTED:
+		return BT_EVENT_GATT_CONNECTION_STATUS;
+	case BLUETOOTH_EVENT_GATT_RSSI:
+		return BT_EVENT_GATT_RSSI_VALUE;
 	case BLUETOOTH_EVENT_SERVICE_SEARCHED:
 		return BT_EVENT_SERVICE_SEARCHED;
 	case BLUETOOTH_EVENT_RFCOMM_DATA_RECEIVED:
@@ -1252,6 +1266,10 @@ static int __bt_get_cb_index(int event)
 		return	BT_EVENT_GATT_CHARACTERISTIC_DISCOVERED;
 	case BLUETOOTH_EVENT_GATT_CHAR_VAL_CHANGED:
 		return	BT_EVENT_GATT_VALUE_CHANGED;
+	case BLUETOOTH_EVENT_GATT_READ_CHAR:
+		return	BT_EVENT_GATT_READ_CHARACTERISTIC;
+	case BLUETOOTH_EVENT_GATT_WRITE_CHAR:
+		return	BT_EVENT_GATT_WRITE_CHARACTERISTIC;
 	default:
 		return -1;
 	}

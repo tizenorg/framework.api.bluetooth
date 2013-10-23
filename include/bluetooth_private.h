@@ -84,8 +84,12 @@ typedef enum
 	BT_EVENT_AVRCP_SCAN_MODE_CHANGED, /**< AVRCP scan mode change callback */
 	BT_EVENT_HID_CONNECTION_STATUS, /**< HID connection status callback */
 	BT_EVENT_DEVICE_CONNECTION_STATUS, /**< Device connection status callback */
+	BT_EVENT_GATT_CONNECTION_STATUS, /** < GATT connection status callback */
+	BT_EVENT_GATT_RSSI_VALUE, /** < RSSI value for remote device */
 	BT_EVENT_GATT_CHARACTERISTIC_DISCOVERED, /**< GATT characteristic discovered callback */
 	BT_EVENT_GATT_VALUE_CHANGED, /**< GATT characteristic value changed callback */
+	BT_EVENT_GATT_READ_CHARACTERISTIC, /**< GATT characteristic value read callback */
+	BT_EVENT_GATT_WRITE_CHARACTERISTIC, /**< GATT characteristic value read callback */
 } bt_event_e;
 
 /**

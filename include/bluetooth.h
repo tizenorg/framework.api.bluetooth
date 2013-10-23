@@ -75,6 +75,7 @@ typedef enum
 	BT_ERROR_REMOTE_DEVICE_NOT_FOUND = TIZEN_ERROR_NETWORK_CLASS|0x0109, /**< Remote device not found */
 	BT_ERROR_SERVICE_SEARCH_FAILED = TIZEN_ERROR_NETWORK_CLASS|0x010A, /**< Service search failed */
 	BT_ERROR_REMOTE_DEVICE_NOT_CONNECTED = TIZEN_ERROR_NETWORK_CLASS|0x010B, /**< Remote device is not connected */
+	BT_ERROR_PERMISSION_DENIED = TIZEN_ERROR_NETWORK_CLASS|0x010C, /**< Permission denied */
 } bt_error_e;
 
 /**
@@ -110,6 +111,13 @@ typedef enum
 	BT_ADAPTER_DEVICE_DISCOVERY_FINISHED, /**< Device discovery is finished */
 	BT_ADAPTER_DEVICE_DISCOVERY_FOUND, /**< The remote Bluetooth device is found */
 } bt_adapter_device_discovery_state_e;
+
+typedef enum
+{
+	BT_ADAPTER_DEVICE_DISCOVERY_BREDR = 0x01, /**< Device discovery for BREDR devices only */
+	BT_ADAPTER_DEVICE_DISCOVERY_LE, /**< Device discovery for LE devices only */
+	BT_ADAPTER_DEVICE_DISCOVERY_LE_BREDR, /**< Device discovery for both LE and BREDR devices */
+} bt_adapter_discover_devices_type_e;
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
@@ -990,6 +998,40 @@ int bt_adapter_get_visibility(bt_adapter_visibility_mode_e *mode, int *duration)
  * @see bt_adapter_unset_visibility_mode_changed_cb()
  */
 int bt_adapter_set_visibility(bt_adapter_visibility_mode_e discoverable_mode, int duration);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Starts the device discovery for a particular type, asynchronously. The various
+ * supporting discovery types are BT_ADAPTER_DEVICE_DISCOVERY_BREDR, BT_ADAPTER_DEVICE_DISCOVERY_LE
+ * and BT_ADAPTER_DEVICE_DISCOVERY_LE_BREDR.
+ *
+ * @details If a device is discovered for a particular type, bt_adapter_device_discovery_state_changed_cb()
+*  will be invoked with #BT_ADAPTER_DEVICE_DISCOVERY_FOUND, and then bt_adapter_device_discovery_state_changed_cb()
+ * will be called with #BT_ADAPTER_DEVICE_DISCOVERY_FINISHED in case of the completion or cancellation of the discovery.
+ *
+ * @remarks To connect to peer Bluetooth device, you need to know its Bluetooth address. \n
+ * The device discovery can be stopped by bt_adapter_stop_device_discovery(). This API is similar to
+ * bt_adapter_start_device_discovery() but here we can specify the device type to be discovered which
+ * could makes the discovery procedure faster.
+ *
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_ENABLED  Not enabled
+ * @retval #BT_ERROR_NOW_IN_PROGRESS  Operation is now in progress
+ * @retval #BT_ERROR_OPERATION_FAILED  Operation failed
+ *
+ * @pre The state of local Bluetooth must be #BT_ADAPTER_ENABLED with bt_adapter_enable().
+ * @post This function invokes bt_adapter_device_discovery_state_changed_cb().
+ *
+ * @see bt_adapter_enable()
+ * @see bt_adapter_is_discovering()
+ * @see bt_adapter_stop_device_discovery()
+ * @see bt_adapter_device_discovery_state_changed_cb()
+ * @see bt_adapter_set_device_discovery_state_changed_cb()
+ * @see bt_adapter_unset_device_discovery_state_changed_cb()
+ */
+int bt_adapter_start_discover_devices(bt_adapter_discover_devices_type_e type);
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE

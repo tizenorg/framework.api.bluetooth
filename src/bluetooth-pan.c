@@ -70,6 +70,23 @@ int bt_nap_disconnect_all(void)
 	return error;
 }
 
+int bt_nap_disconnect(const char *remote_address)
+{
+	int error = BT_ERROR_INVALID_PARAMETER;
+	bluetooth_device_address_t addr_hex = { {0,} };
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(remote_address);
+	_bt_convert_address_to_hex(&addr_hex, remote_address);
+	error = bluetooth_network_server_disconnect(&addr_hex);
+	error = _bt_get_error_code(error);
+	if (error != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error),
+			error);
+	}
+	return error;
+}
+
 int bt_nap_set_connection_state_changed_cb(
 				bt_nap_connection_state_changed_cb callback,
 				void *user_data)

@@ -32,6 +32,7 @@
 #define PRT(format, args...) printf("%s:%d() "format, __FUNCTION__, __LINE__, ##args)
 #define TC_PRT(format, args...) PRT(format"\n", ##args)
 
+#define DEVICE_ADDRESS "F6:FB:8F:D8:C8:7C"
 const char *spp_uuid = "00001101-0000-1000-8000-00805F9B34FB";
 const char *opp_uuid = "00001105-0000-1000-8000-00805f9b34fb";
 
@@ -76,6 +77,10 @@ tc_table_t tc_table[] = {
 	{"bt_adapter_get_local_oob_data" , 14},
 	{"bt_adapter_set_remote_oob_data" , 15},
 	{"bt_adapter_remove_remote_oob_data"	, 16},
+	{"bt_adapter_start_discover_devices"	, 17},
+	{"bt_adapter_set_visibility_mode_changed_cb"    , 18},
+	{"bt_adapter_unset_visibility_mode_changed_cb"  , 19},
+
 
 	/* Socket functions */
 	{"bt_socket_create_rfcomm"		, 50},
@@ -85,7 +90,7 @@ tc_table_t tc_table[] = {
 	{"bt_socket_accept"			, 54},
 	{"bt_socket_reject"			, 55},
 	{"bt_socket_connect_rfcomm"		, 56},
-	{"bt_socket_disconnect_rfcomm" 		, 57},
+	{"bt_socket_disconnect_rfcomm"		, 57},
 	{"bt_socket_send_data"			, 58},
 	{"bt_socket_set_data_received_cb"	, 59},
 	{"bt_socket_unset_data_received_cb"	, 60},
@@ -140,6 +145,8 @@ tc_table_t tc_table[] = {
 	{"bt_device_set_connection_state_changed_cb"	, 124},
 	{"bt_device_unset_connection_state_changed_cb"	, 125},
 	{"bt_device_foreach_connected_profiles"	, 126},
+	{"bt_device_set_bond_created_cb" , 127},
+	{"bt_device_create_bond" , 128},
 
 	/* Gatt functions */
 	{"bt_gatt_foreach_primary_services"	, 140},
@@ -219,6 +226,13 @@ static void __bt_free_gatt_characteristics_services(void)
 		characteristics_services[i] = NULL;
 	}
 	char_service_index = 0;
+}
+
+static void __bt_adapter_device_visibility_mode_changed_cb(int result,
+					bt_adapter_visibility_mode_e visibility_mode,
+					void *user_data)
+{
+       TC_PRT("visibility_mode: %d", visibility_mode);
 }
 
 
@@ -358,6 +372,26 @@ bool __bt_device_connected_profile(bt_profile_e profile, void *user_data)
 	return true;
 }
 
+void __bt_device_bond_created_cb(int result, bt_device_info_s *device_info, void *user_data)
+{
+	if(result == BT_ERROR_NONE)
+	{
+		TC_PRT("Callback: A bond with chat_server is created.");
+		TC_PRT("Callback: The number of service - %d.", device_info->service_count);
+
+		int i = 0;
+		for(i=0; i<device_info->service_count; i++)
+		{
+			TC_PRT("Callback: service[%d] - %s", i+1, device_info->service_uuid[i]);
+		}
+		TC_PRT("Callback: is_bonded - %d.", device_info->is_bonded);
+		TC_PRT("Callback: is_connected - %d.", device_info->is_connected);
+	}
+	else
+	{
+		TC_PRT("Callback: Creating a bond is failed.");
+	}
+}
 bool __bt_gatt_primary_service_cb(bt_gatt_attribute_h service, void *user_data)
 {
 	TC_PRT("__bt_gatt_primary_service_cb");
@@ -453,7 +487,7 @@ void __bt_avrcp_scan_mode_changed_cb(bt_avrcp_scan_mode_e scan, void *user_data)
 int test_input_callback(void *data)
 {
 	int ret = 0;
-	int test_id = (int)data;
+	long test_id = (long)data;
 
 	switch (test_id) {
 	case 0x00ff:
@@ -603,6 +637,25 @@ int test_input_callback(void *data)
 		}
 		break;
 	}
+
+	case 17: {
+		ret = bt_adapter_start_discover_devices(BT_ADAPTER_DEVICE_DISCOVERY_BREDR);
+		if (ret < BT_ERROR_NONE)
+			TC_PRT("failed with [0x%04x]", ret);
+		break;
+	}
+
+	case 18:
+		ret = bt_adapter_set_visibility_mode_changed_cb(__bt_adapter_device_visibility_mode_changed_cb, NULL);
+		if (ret < BT_ERROR_NONE)
+			TC_PRT("failed with [0x%04x]", ret);
+		break;
+	case 19:
+			ret = bt_adapter_unset_visibility_mode_changed_cb();
+		if (ret < BT_ERROR_NONE)
+			TC_PRT("failed with [0x%04x]", ret);
+		break;
+
 
 	/* Socket functions */
 	case 50: {
@@ -1022,6 +1075,27 @@ int test_input_callback(void *data)
 		break;
 	}
 
+	case 127 : {
+		ret = bt_device_set_bond_created_cb(__bt_device_bond_created_cb,
+			NULL);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+
+	case 128 : {
+		char *address;
+
+		address = g_strdup(DEVICE_ADDRESS);
+
+		ret = bt_device_create_bond(address);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+
 	case 140: {
 		char *address;
 
@@ -1185,7 +1259,6 @@ int test_input_callback(void *data)
 			TC_PRT("failed with [0x%04x]", ret);
 		}
 		break;
-
 	default:
 		break;
 	}
@@ -1199,8 +1272,8 @@ static gboolean key_event_cb(GIOChannel *chan,
 {
 	char buf[BUFFER_LEN] = { 0 };
 
-	unsigned int len = 0;
-	int test_id;
+	gsize len = 0;
+	long test_id;
 
 	memset(buf, 0, sizeof(buf));
 

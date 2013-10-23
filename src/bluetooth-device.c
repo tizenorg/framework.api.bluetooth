@@ -255,3 +255,20 @@ int bt_device_unset_connection_state_changed_cb(void)
 	return BT_ERROR_NONE;
 }
 
+int bt_device_read_rssi_value(const char *address)
+{
+	int ret;
+	bluetooth_device_address_t bd_addr = { {0,} };
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(address);
+
+	_bt_convert_address_to_hex(&bd_addr, address);
+
+	ret = _bt_get_error_code(bluetooth_read_rssi(&bd_addr));
+
+	if (ret != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+	}
+	return ret;
+}

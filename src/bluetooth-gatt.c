@@ -211,7 +211,7 @@ int bt_gatt_get_characteristic_declaration(bt_gatt_attribute_h characteristic,
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(characteristic);
 
-	memset(&property, 0x00, sizeof(bt_gatt_service_property_t));
+	memset(&property, 0x00, sizeof(bt_gatt_char_property_t));
 
 	ret = _bt_get_error_code(bluetooth_gatt_get_characteristics_property((const char *)characteristic, &property));
 
@@ -250,7 +250,7 @@ int bt_gatt_set_characteristic_value(bt_gatt_attribute_h characteristic,
 		return BT_ERROR_INVALID_PARAMETER;
 
 	ret = _bt_get_error_code(bluetooth_gatt_set_characteristics_value((const char *)characteristic,
-							(const guint8 *)value, value_length));
+							(const guint8 *)value, value_length, 0));
 
 	if (ret != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);

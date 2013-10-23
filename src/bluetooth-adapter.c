@@ -243,6 +243,7 @@ int bt_adapter_foreach_bonded_device(bt_adapter_bonded_device_cb foreach_cb, voi
 	}
 
 	if (dev_list != NULL) {
+		g_ptr_array_foreach(dev_list, (GFunc)g_free, NULL);
 		g_ptr_array_free(dev_list, TRUE);
 	}
 
@@ -422,6 +423,19 @@ int bt_adapter_start_device_discovery(void)
 
 	BT_CHECK_INIT_STATUS();
 	error_code = _bt_get_error_code(bluetooth_start_discovery(0, 0, BLUETOOTH_DEVICE_MAJOR_MASK_MISC));
+	if (error_code != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error_code), error_code);
+	}
+	return error_code;
+}
+
+int bt_adapter_start_discover_devices(bt_adapter_discover_devices_type_e type)
+{
+	int error_code = BT_ERROR_NONE;
+
+	BT_CHECK_INIT_STATUS();
+	error_code = _bt_get_error_code(bluetooth_start_custom_discovery(type,
+					0, 0, BLUETOOTH_DEVICE_MAJOR_MASK_MISC));
 	if (error_code != BT_ERROR_NONE) {
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error_code), error_code);
 	}
