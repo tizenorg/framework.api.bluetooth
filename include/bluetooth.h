@@ -139,6 +139,7 @@ typedef enum
     BT_PROFILE_A2DP = 0x02, /**< Advanced Audio Distribution Profile */
     BT_PROFILE_HSP = 0x04, /**< Headset Profile */
     BT_PROFILE_HID = 0x08, /**< Human Interface Device Profile */
+    BT_PROFILE_NAP = 0x10, /**< Network Profile */
 } bt_profile_e;
 
 /**
@@ -1637,6 +1638,25 @@ int bt_device_cancel_service_search(void);
  * @see bt_device_connected_profile()
  */
 int bt_device_foreach_connected_profiles(const char *remote_address, bt_device_connected_profile callback, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
+ * @brief Gets the profile connected status.
+ * @param[in] remote_address The address of the remote device
+ * @param[in] wish to know bt_profile
+ * @param[out] the connected status
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_ENABLED  Not enabled
+ * @retval #BT_ERROR_REMOTE_DEVICE_NOT_BONDED	Remote device not bonded
+ * @retval #BT_ERROR_OPERATION_FAILED	Operation failed
+ * @pre The state of local Bluetooth must be #BT_ADAPTER_ENABLED with bt_adapter_enable().
+ * @see bt_adapter_enable()
+ */
+int bt_device_is_profile_connected(const char *remote_address, bt_profile_e bt_profile,
+					bool *connected_status);
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE

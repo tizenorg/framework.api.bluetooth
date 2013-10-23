@@ -147,6 +147,7 @@ tc_table_t tc_table[] = {
 	{"bt_device_foreach_connected_profiles"	, 126},
 	{"bt_device_set_bond_created_cb" , 127},
 	{"bt_device_create_bond" , 128},
+	{"bt_device_is_connected_profiles", 129},
 
 	/* Gatt functions */
 	{"bt_gatt_foreach_primary_services"	, 140},
@@ -1093,6 +1094,30 @@ int test_input_callback(void *data)
 		if (ret < BT_ERROR_NONE) {
 			TC_PRT("failed with [0x%04x]", ret);
 		}
+		break;
+	}
+
+	case 129 : {
+		char *address;
+		int i = 0;
+		bool is_connected_state = false;
+		address = g_strdup("D8:57:EF:C1:F4:ED");
+
+		int bt_profile[] = {BT_PROFILE_RFCOMM, BT_PROFILE_A2DP,
+			BT_PROFILE_HSP, BT_PROFILE_HID, BT_PROFILE_NAP, 0};
+
+		while (bt_profile[i] != 0) {
+			ret = bt_device_is_profile_connected(address, bt_profile[i],
+							&is_connected_state);
+
+			if (ret < BT_ERROR_NONE) {
+				TC_PRT("failed with [0x%04x]", ret);
+			} else {
+				TC_PRT("is_connected_state : [%d]", is_connected_state);
+			}
+			i++;
+		}
+		g_free(address);
 		break;
 	}
 

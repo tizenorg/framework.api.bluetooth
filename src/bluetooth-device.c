@@ -175,6 +175,29 @@ int bt_device_foreach_connected_profiles(const char *remote_address, bt_device_c
 	return BT_ERROR_NONE;
 }
 
+int bt_device_is_profile_connected(const char *remote_address, bt_profile_e bt_profile,
+				bool *connected_status)
+{
+	bluetooth_device_address_t addr_hex = { {0,} };
+	int ret;
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(remote_address);
+
+	_bt_convert_address_to_hex(&addr_hex, remote_address);
+
+	ret = _bt_get_error_code(bluetooth_is_device_connected(&addr_hex, bt_profile,
+								(gboolean *) connected_status));
+
+	if (ret != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+		return ret;
+	}
+
+	return ret;
+
+}
+
 int bt_device_set_bond_created_cb(bt_device_bond_created_cb callback, void *user_data)
 {
 	BT_CHECK_INIT_STATUS();
