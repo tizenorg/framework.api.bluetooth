@@ -457,6 +457,7 @@ typedef struct
 	bool is_bonded;	/**< The bonding state */
 	char **service_uuid;  /**< The UUID list of service */
 	int service_count;	/**< The number of services */
+	unsigned char device_type;  /**< The Device Type of Remote Device */
 } bt_adapter_device_discovery_info_s;
 
 /**
@@ -1804,6 +1805,14 @@ int bt_device_set_connection_state_changed_cb(bt_device_connection_state_changed
  */
 int bt_device_unset_connection_state_changed_cb(void);
 
+typedef void (*bt_device_gatt_state_changed_cb)(int result, void *user_data);
+
+int bt_device_connect_le(bt_device_gatt_state_changed_cb callback, const char *address);
+
+int bt_device_disconnect_le(bt_device_gatt_state_changed_cb callback, const char *address);
+
+int bt_device_read_rssi_value(const char *address);
+
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_SOCKET_MODULE
  * @brief Registers a rfcomm socket with a specific UUID.
@@ -2467,6 +2476,20 @@ int bt_nap_deactivate(void);
  * @see bt_nap_activate()
  */
 int bt_nap_disconnect_all(void);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_PAN_NAP_MODULE
+ * @brief Disconnects the specified PANU(Personal Area Networking User) which is connected to you.
+ * @param[in] remote_address  The remote address
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_ENABLED  Not enabled
+ * @retval #BT_ERROR_OPERATION_FAILED  Operation failed
+ * @pre The Bluetooth NAP service must be activated with bt_nap_activate().
+ * @see bt_nap_activate()
+ */
+int bt_nap_disconnect(const char *remote_address);
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_PAN_NAP_MODULE
@@ -3898,6 +3921,7 @@ int bt_gatt_unset_characteristic_changed_cb(bt_gatt_attribute_h service);
  */
 int bt_gatt_get_characteristic_declaration(bt_gatt_attribute_h characteristic, char **uuid, unsigned char **value, int *value_length);
 
+typedef void (*bt_gatt_characteristic_write_cb) (bt_gatt_attribute_h handle);
 /**
  * @ingroup  CAPI_NETWORK_BLUETOOTH_GATT_MODULE
  * @brief  Sets the value of characteristic.
@@ -3914,6 +3938,11 @@ int bt_gatt_get_characteristic_declaration(bt_gatt_attribute_h characteristic, c
  * @see  bt_gatt_get_characteristic_declaration()
  */
 int bt_gatt_set_characteristic_value(bt_gatt_attribute_h characteristic, const unsigned char *value, int value_length);
+
+
+int bt_gatt_set_characteristic_value_request(bt_gatt_attribute_h characteristic, const unsigned char *value,
+				int value_length, unsigned char request, bt_gatt_characteristic_write_cb callback);
+
 
 /**
 * @ingroup  CAPI_NETWORK_BLUETOOTH_GATT_MODULE
@@ -3939,6 +3968,11 @@ int bt_gatt_clone_attribute_handle(bt_gatt_attribute_h* clone, bt_gatt_attribute
 * @see  bt_gatt_clone_attribute_handle()
 */
 int bt_gatt_destroy_attribute_handle(bt_gatt_attribute_h handle);
+
+typedef void (*bt_gatt_characteristic_read_cb) (bt_gatt_attribute_h handle,
+		unsigned char *value, int value_length, void *user_data);
+int bt_gatt_read_characteristic_value(bt_gatt_attribute_h char_handle,
+		bt_gatt_characteristic_read_cb callback);
 
 /**
  * @}

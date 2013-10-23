@@ -136,6 +136,7 @@ tc_table_t tc_table[] = {
 	{"bt_nap_activate"		, 110},
 	{"bt_nap_deactivate"		, 111},
 	{"bt_nap_disconnect_all"	, 112},
+	{"bt_nap_disconnect"            , 113},
 
 	/* Device functions */
 	{"bt_device_set_authorization (true)"	, 120},
@@ -147,7 +148,10 @@ tc_table_t tc_table[] = {
 	{"bt_device_foreach_connected_profiles"	, 126},
 	{"bt_device_set_bond_created_cb" , 127},
 	{"bt_device_create_bond" , 128},
-	{"bt_device_is_connected_profiles", 129},
+	{"bt_device_connect_le" , 129},
+	{"bt_device_disconnect_le" , 130},
+	{"bt_device_read_rssi_value" , 131},
+	{"bt_device_is_connected_profiles", 132},
 
 	/* Gatt functions */
 	{"bt_gatt_foreach_primary_services"	, 140},
@@ -158,6 +162,7 @@ tc_table_t tc_table[] = {
 	{"bt_gatt_unset_characteristic_changed_cb"	, 145},
 	{"bt_gatt_get_characteristic_declaration"	, 146},
 	{"bt_gatt_set_characteristic_value"	, 147},
+	{"bt_gatt_read_characteristic_value"	 , 148},
 
 	/* AVRCP functions */
 	{"bt_avrcp_target_initialize"	, 160},
@@ -256,6 +261,7 @@ static void __bt_adapter_device_discovery_state_changed_cb(int result,
 	TC_PRT("rssi: %d", discovery_info->rssi);
 	TC_PRT("is_bonded: %d", discovery_info->is_bonded);
 	TC_PRT("service_count: %d", discovery_info->service_count);
+	TC_PRT("device type: %u", discovery_info->device_type);
 
 	if (discovery_info->service_uuid == NULL) {
 		TC_PRT("No uuids");
@@ -373,6 +379,11 @@ bool __bt_device_connected_profile(bt_profile_e profile, void *user_data)
 	return true;
 }
 
+void __bt_device_le_connection_status_cb(int result, void *user_data)
+{
+	TC_PRT("Callback: LE Conneciton Status %d", result);
+}
+
 void __bt_device_bond_created_cb(int result, bt_device_info_s *device_info, void *user_data)
 {
 	if(result == BT_ERROR_NONE)
@@ -450,6 +461,27 @@ void __bt_gatt_characteristic_changed_cb(bt_gatt_attribute_h characteristic, uns
 	for (i = 0; i < value_length; i++) {
 		TC_PRT("value %c", value[i]);
 	}
+
+	return;
+}
+
+void __bt_gatt_char_write_cb(bt_gatt_attribute_h handle)
+{
+	TC_PRT("__bt_gatt_char_write_cb");
+	return;
+}
+
+void __bt_gatt_char_read_cb(bt_gatt_attribute_h handle, unsigned char *value, int value_length, void *user_data)
+{
+	int i;
+
+	TC_PRT("__bt_gatt_char_read_cb");
+
+        TC_PRT("value_length %d", value_length);
+
+        for (i = 0; i < value_length; i++) {
+                TC_PRT("value %c", value[i]);
+        }
 
 	return;
 }
@@ -1014,6 +1046,18 @@ int test_input_callback(void *data)
 		}
 		break;
 
+	case 113: {
+		char *address;
+
+		address = g_strdup("00:1B:66:01:23:1C");
+
+		ret = bt_nap_disconnect(address);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+
 	case 120: {
 		char *address;
 
@@ -1098,6 +1142,37 @@ int test_input_callback(void *data)
 	}
 
 	case 129 : {
+		char *address;
+
+		address = g_strdup(DEVICE_ADDRESS);
+		ret = bt_device_connect_le(__bt_device_le_connection_status_cb, address);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+
+	case 130 : {
+		char *address;
+
+		address = g_strdup(DEVICE_ADDRESS);
+
+		ret = bt_device_disconnect_le(__bt_device_le_connection_status_cb,address);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+	case 131 : {
+		char *address;
+		address = g_strdup(DEVICE_ADDRESS);
+		ret = bt_device_read_rssi_value(address);
+		if (ret < BT_ERROR_NONE)
+			TC_PRT("failed with [0x%04x]", ret);
+		break;
+	}
+
+	case 132 : {
 		char *address;
 		int i = 0;
 		bool is_connected_state = false;
@@ -1209,7 +1284,16 @@ int test_input_callback(void *data)
 	case 147: {
 		unsigned char value[5] = { 0, 1, 2, 3, 4 };
 
-		ret = bt_gatt_set_characteristic_value(characteristics_services[0], value, 5);
+		ret = bt_gatt_set_characteristic_value_request(characteristics_services[0], value, 5, 1,
+				__bt_gatt_char_write_cb);
+		if (ret < BT_ERROR_NONE) {
+			TC_PRT("failed with [0x%04x]", ret);
+		}
+		break;
+	}
+
+	case 148 : {
+		ret = bt_gatt_read_characteristic_value(characteristics_services[0], __bt_gatt_char_read_cb);
 		if (ret < BT_ERROR_NONE) {
 			TC_PRT("failed with [0x%04x]", ret);
 		}

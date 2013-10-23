@@ -259,6 +259,31 @@ int bt_gatt_set_characteristic_value(bt_gatt_attribute_h characteristic,
 	return ret;
 }
 
+int bt_gatt_set_characteristic_value_request(bt_gatt_attribute_h characteristic,
+				const unsigned char *value, int value_length,
+				unsigned char request, bt_gatt_characteristic_write_cb callback)
+{
+	int ret;
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(characteristic);
+	BT_CHECK_INPUT_PARAMETER(value);
+
+	if (value_length <= 0)
+		return BT_ERROR_INVALID_PARAMETER;
+
+	ret = _bt_get_error_code(bluetooth_gatt_set_characteristics_value((const char *)characteristic,
+							(const guint8 *)value, value_length, request));
+
+	if (ret != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+	} else {
+		_bt_set_cb(BT_EVENT_GATT_WRITE_CHARACTERISTIC, callback, characteristic);
+	}
+
+	return ret;
+}
+
 int bt_gatt_clone_attribute_handle(bt_gatt_attribute_h *clone,
 				bt_gatt_attribute_h origin)
 {
@@ -282,4 +307,24 @@ int bt_gatt_destroy_attribute_handle(bt_gatt_attribute_h handle)
 	g_free(handle);
 
 	return error;
+}
+
+int bt_gatt_read_characteristic_value(bt_gatt_attribute_h characteristic,
+		bt_gatt_characteristic_read_cb callback)
+{
+	int ret;
+
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(characteristic);
+	BT_CHECK_INPUT_PARAMETER(callback);
+
+	ret = _bt_get_error_code(bluetooth_gatt_read_characteristic_value((const char *)characteristic));
+
+	if (ret != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+	} else {
+		_bt_set_cb(BT_EVENT_GATT_READ_CHARACTERISTIC, callback, NULL);
+	}
+
+	return ret;
 }

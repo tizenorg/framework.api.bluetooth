@@ -469,6 +469,8 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 	int i;
 	int call_id;
 	int *avrcp_mode;
+	int *le_conn_state;
+	short *rssi_value;
 	bluetooth_rfcomm_connection_t *connection_ind = NULL;
 	bluetooth_rfcomm_disconnection_t *disconnection_ind = NULL;
 	bt_socket_connection_s rfcomm_connection;
@@ -1039,6 +1041,27 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		if (device_addr != NULL)
 			free(device_addr);
 		break;
+	case BLUETOOTH_EVENT_GATT_CONNECTED:
+		BT_INFO("BLUETOOTH_EVENT_GATT_CONNECTED");
+		le_conn_state = (int *)(param->param_data);
+
+		((bt_device_gatt_state_changed_cb)bt_event_slot_container[event_index].callback)
+		 (*le_conn_state, bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_GATT_DISCONNECTED:
+		BT_INFO("BLUETOOTH_EVENT_GATT_DISCONNECTED");
+		le_conn_state = (int *)(param->param_data);
+
+		((bt_device_gatt_state_changed_cb)bt_event_slot_container[event_index].callback)
+		 (*le_conn_state, bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_GATT_RSSI:
+		BT_INFO("BLUETOOTH_EVENT_GATT_RSSI");
+		rssi_value = (short *)(param->param_data);
+
+		((bt_device_gatt_state_changed_cb)bt_event_slot_container[event_index].callback)
+		 (*rssi_value, bt_event_slot_container[event_index].user_data);
+		break;
 	case BLUETOOTH_EVENT_GATT_SVC_CHAR_DISCOVERED:
 		BT_INFO("BLUETOOTH_EVENT_GATT_SVC_CHAR_DISCOVERED");
 		svc_char = (bt_gatt_discovered_char_t *)(param->param_data);
@@ -1117,6 +1140,7 @@ static int __bt_get_bt_adapter_device_discovery_info_s(bt_adapter_device_discove
 
 	(*discovery_info)->rssi = (int)source_info->rssi;
 	(*discovery_info)->is_bonded = (bool)source_info->paired;
+	(*discovery_info)->device_type = (unsigned char)source_info->device_type;
 
 	return BT_ERROR_NONE;
 }
