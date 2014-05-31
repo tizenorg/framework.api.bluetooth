@@ -1,0 +1,5 @@
+Before run DTS of bluetooth, BT should be disabled.
+This DTS needs another target and it must be set as the following:
+ 1) BT is activated.
+ 2) BT is discoverable.
+ 3) BT name is set as "dts_test".
