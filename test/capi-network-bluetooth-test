@@ -1,0 +1,4 @@
+root capi-network-bluetooth-test rw----
+_default_ capi-network-bluetooth-test rw----
+capi-network-bluetooth-test bt-service::platform rw----
+capi-network-bluetooth-test bt-service::public -w----
