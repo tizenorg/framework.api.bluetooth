@@ -1,0 +1,4 @@
+capi-network-bluetooth-infinite-spp-test-server bt-service::public w
+capi-network-bluetooth-infinite-spp-test-server bt-service::platform rw
+capi-network-bluetooth-infinite-spp-test-client bt-service::public w
+capi-network-bluetooth-infinite-spp-test-client bt-service::platform rw

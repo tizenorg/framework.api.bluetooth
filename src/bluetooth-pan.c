@@ -24,23 +24,29 @@
 #include "bluetooth.h"
 #include "bluetooth_private.h"
 
-#ifdef LOG_TAG
-#undef LOG_TAG
-#endif
-#define LOG_TAG "TIZEN_N_BLUETOOTH"
-
 GList *sending_files;
+
+#ifdef TIZEN_PAN_DISABLE
+#define BT_CHECK_PAN_SUPPORT() \
+		{ \
+			BT_CHECK_BT_SUPPORT(); \
+			LOGE("[%s] NOT_SUPPORTED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_SUPPORTED); \
+			return BT_ERROR_NOT_SUPPORTED; \
+		}
+#else
+#define BT_CHECK_PAN_SUPPORT()
+#endif
 
 int bt_nap_activate(void)
 {
 	int error = BT_ERROR_NONE;
 
+	BT_CHECK_PAN_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	error = bluetooth_network_activate_server();
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
 	return error;
 }
@@ -49,12 +55,49 @@ int bt_nap_deactivate(void)
 {
 	int error = BT_ERROR_NONE;
 
+	BT_CHECK_PAN_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	error = bluetooth_network_deactivate_server();
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+	}
+	return error;
+}
+
+/* bluez don't support the disconnect API about NAP server */
+/* So we implement this, deactivate the server and re-activate the server */
+int bt_nap_disconnect_all(void)
+{
+	int error = BT_ERROR_NONE;
+
+	BT_CHECK_PAN_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+	error = bluetooth_network_deactivate_server();
+	error = _bt_get_error_code(error);
+	if (error != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+	} else {
+		return bt_nap_activate();
+	}
+
+	return error;
+}
+
+int bt_nap_disconnect(const char *remote_address)
+{
+	int error = BT_ERROR_INVALID_PARAMETER;
+	bluetooth_device_address_t addr_hex = { {0,} };
+
+	BT_CHECK_PAN_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(remote_address);
+	_bt_convert_address_to_hex(&addr_hex, remote_address);
+	error = bluetooth_network_server_disconnect(&addr_hex);
+	error = _bt_get_error_code(error);
+	if (error != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error),
+				error);
 	}
 	return error;
 }
@@ -63,6 +106,7 @@ int bt_nap_set_connection_state_changed_cb(
 				bt_nap_connection_state_changed_cb callback,
 				void *user_data)
 {
+	BT_CHECK_PAN_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_NAP_CONNECTION_STATE_CHANGED, callback, user_data);
@@ -80,6 +124,7 @@ int bt_panu_set_connection_state_changed_cb(
 				bt_panu_connection_state_changed_cb callback,
 				void *user_data)
 {
+	BT_CHECK_PAN_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_PAN_CONNECTION_STATE_CHANGED, callback, user_data);
@@ -97,6 +142,7 @@ int bt_panu_connect(const char *remote_address, bt_panu_service_type_e type)
 	int error = BT_ERROR_INVALID_PARAMETER;
 	bluetooth_device_address_t addr_hex = { {0,} };
 
+	BT_CHECK_PAN_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(remote_address);
 	_bt_convert_address_to_hex(&addr_hex, remote_address);
@@ -105,8 +151,8 @@ int bt_panu_connect(const char *remote_address, bt_panu_service_type_e type)
 					BLUETOOTH_NETWORK_NAP_ROLE, NULL);
 		error = _bt_get_error_code(error);
 		if (error != BT_ERROR_NONE) {
-			LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-				_bt_convert_error_to_string(error), error);
+			BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error),
+					error);
 		}
 	}
 	return error;
@@ -117,14 +163,15 @@ int bt_panu_disconnect(const char *remote_address)
 	int error = BT_ERROR_INVALID_PARAMETER;
 	bluetooth_device_address_t addr_hex = { {0,} };
 
+	BT_CHECK_PAN_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(remote_address);
 	_bt_convert_address_to_hex(&addr_hex, remote_address);
 	error = bluetooth_network_disconnect(&addr_hex);
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error),
+				error);
 	}
 	return error;
 }

@@ -1,0 +1,13 @@
+[Unit]
+Description=BT On test while infinite reboot
+PartOf=bluetooth-hciattach@bt.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/etc/bluetooth/check_bt_during_infinite_boot.sh
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=inherit
+
+[Install]
+RequiredBy=bluetooth-hciattach@bt.service

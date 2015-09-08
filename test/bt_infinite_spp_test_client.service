@@ -1,0 +1,11 @@
+[Unit]
+Description=BT SPP test infinitely
+PartOf=bluetooth-hciattach@bt.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bt_infinite_spp_test client
+RemainAfterExit=yes
+
+[Install]
+RequiredBy=bluetooth-hciattach@bt.service

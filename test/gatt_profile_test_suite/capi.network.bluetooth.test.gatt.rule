@@ -1,0 +1,2 @@
+capi-network-bluetooth-test-gatt bt-service::public w
+capi-network-bluetooth-test-gatt bt-service::platform rw

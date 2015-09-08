@@ -1,0 +1,12 @@
+<manifest>
+    <define>
+        <domain name="capi-network-bluetooth-test"/>
+	<request>
+		<smack request="bt-service::public" type="w"/>
+		<smack request="bt-service::platform" type="rw"/>
+	</request>
+    </define>
+    <request>
+        <domain name="capi-network-bluetooth-test"/>
+    </request>
+</manifest>

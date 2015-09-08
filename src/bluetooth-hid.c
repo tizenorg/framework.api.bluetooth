@@ -25,46 +25,77 @@
 #include "bluetooth.h"
 #include "bluetooth_private.h"
 
-#ifdef LOG_TAG
-#undef LOG_TAG
+static bool is_hid_host_initialized = false;
+
+#ifdef TIZEN_HID_DISABLE
+#define BT_CHECK_HID_SUPPORT() \
+	{ \
+		BT_CHECK_BT_SUPPORT(); \
+		LOGE("[%s] NOT_SUPPORTED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_SUPPORTED); \
+		return BT_ERROR_NOT_SUPPORTED; \
+	}
+#else
+#define BT_CHECK_HID_SUPPORT()
 #endif
-#define LOG_TAG "TIZEN_N_BLUETOOTH"
+
+#define BT_CHECK_HID_HOST_INIT_STATUS() \
+	if (__bt_check_hid_host_init_status() == BT_ERROR_NOT_INITIALIZED) \
+	{ \
+		LOGE("[%s] NOT_INITIALIZED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_INITIALIZED); \
+		return BT_ERROR_NOT_INITIALIZED; \
+	}
+
+int __bt_check_hid_host_init_status(void)
+{
+	if (is_hid_host_initialized != true) {
+		BT_ERR("NOT_INITIALIZED(0x%08x)", BT_ERROR_NOT_INITIALIZED);
+		return BT_ERROR_NOT_INITIALIZED;
+	}
+
+	return BT_ERROR_NONE;
+}
 
 int bt_hid_host_initialize(bt_hid_host_connection_state_changed_cb connection_cb,
 								void *user_data)
 {
 	int error;
 
+	BT_CHECK_HID_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(connection_cb);
 
 	error = bluetooth_hid_init(_bt_hid_event_proxy, user_data);
 	error = _bt_get_error_code(error);
 	if (BT_ERROR_NONE != error) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
-	} else {
-		_bt_set_cb(BT_EVENT_HID_CONNECTION_STATUS, connection_cb, user_data);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+		return error;
 	}
-	return error;
+
+	_bt_set_cb(BT_EVENT_HID_CONNECTION_STATUS, connection_cb, user_data);
+
+	is_hid_host_initialized = true;
+	return BT_ERROR_NONE;
 }
 
 int bt_hid_host_deinitialize()
 {
 	int error;
 
+	BT_CHECK_HID_SUPPORT();
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HID_HOST_INIT_STATUS();
 
 	error = bluetooth_hid_deinit();
 	error = _bt_get_error_code(error);
 	if (BT_ERROR_NONE != error) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
-	} else {
-		_bt_unset_cb(BT_EVENT_HID_CONNECTION_STATUS);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+		return error;
 	}
 
-	return error;
+	_bt_unset_cb(BT_EVENT_HID_CONNECTION_STATUS);
+
+	is_hid_host_initialized = false;
+	return BT_ERROR_NONE;
 }
 
 int bt_hid_host_connect(const char *remote_address)
@@ -72,7 +103,9 @@ int bt_hid_host_connect(const char *remote_address)
 	int error;
 	bluetooth_device_address_t addr_hex = { {0,} };
 
+	BT_CHECK_HID_SUPPORT();
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HID_HOST_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(remote_address);
 
 	_bt_convert_address_to_hex(&addr_hex, remote_address);
@@ -80,8 +113,7 @@ int bt_hid_host_connect(const char *remote_address)
 	error = bluetooth_hid_connect((hid_device_address_t *)&addr_hex);
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
 	return error;
 }
@@ -91,7 +123,9 @@ int bt_hid_host_disconnect(const char *remote_address)
 	int error;
 	bluetooth_device_address_t addr_hex = { {0,} };
 
+	BT_CHECK_HID_SUPPORT();
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HID_HOST_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(remote_address);
 
 	_bt_convert_address_to_hex(&addr_hex, remote_address);
@@ -99,8 +133,7 @@ int bt_hid_host_disconnect(const char *remote_address)
 	error = bluetooth_hid_disconnect((hid_device_address_t *)&addr_hex);
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE) {
-		LOGE("[%s] %s(0x%08x)", __FUNCTION__,
-			_bt_convert_error_to_string(error), error);
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
 	return error;
 }

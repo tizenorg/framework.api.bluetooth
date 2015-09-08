@@ -8,9 +8,18 @@ SET(PREFIX ${CMAKE_INSTALL_PREFIX})
 
 SET(INC_DIR include)
 INCLUDE_DIRECTORIES(${INC_DIR})
+IF (TIZEN_WEARABLE)
+	INCLUDE_DIRECTORIES(${INC_DIR}/wearable)
+ELSE ()
+	INCLUDE_DIRECTORIES(${INC_DIR}/mobile)
+ENDIF (TIZEN_WEARABLE)
 
-SET(dependents "dlog glib-2.0 capi-base-common bluetooth-api bluetooth-media-control")
-SET(pc_dependents "capi-base-common")
+IF (TIZEN_WEARABLE)
+SET(dependents "dlog glib-2.0 capi-base-common bluetooth-api privacy-manager-client")
+ELSE ()
+SET(dependents "dlog glib-2.0 capi-base-common bluetooth-api")
+ENDIF (TIZEN_WEARABLE)
+SET(pc_dependents "capi-base-common glib-2.0")
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(${fw_name} REQUIRED ${dependents})
@@ -42,7 +51,11 @@ src/bluetooth-hdp.c
 src/bluetooth-hid.c
 src/bluetooth-audio.c
 src/bluetooth-avrcp.c
+src/bluetooth-gatt.c
 )
+IF (TIZEN_WEARABLE)
+LIST(APPEND SOURCES src/bluetooth-pbap.c)
+ENDIF (TIZEN_WEARABLE)
 
 ADD_LIBRARY(${fw_name} SHARED ${SOURCES})
 
@@ -62,6 +75,19 @@ INSTALL(
         PATTERN "*_private.h" EXCLUDE
         PATTERN "${INC_DIR}/*.h"
         )
+IF (TIZEN_WEARABLE)
+INSTALL(
+        DIRECTORY ${INC_DIR}/wearable/ DESTINATION include/network
+        FILES_MATCHING
+        PATTERN "${INC_DIR}/wearable/*.h"
+        )
+ELSE ()
+INSTALL(
+        DIRECTORY ${INC_DIR}/mobile/ DESTINATION include/network
+        FILES_MATCHING
+        PATTERN "${INC_DIR}/mobile/*.h"
+        )
+ENDIF (TIZEN_WEARABLE)
 
 SET(PC_NAME ${fw_name})
 SET(PC_REQUIRED ${pc_dependents})

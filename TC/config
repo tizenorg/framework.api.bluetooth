@@ -1,0 +1,4 @@
+PKG_NAME=capi-network-bluetooth
+TET_INSTALL_HOST_PATH=/var/tmp/dts_fw/TC/TETware
+TET_INSTALL_TARGET_PATH=/opt/home/$PKG_NAME/TETware
+
