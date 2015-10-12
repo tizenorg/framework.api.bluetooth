@@ -4741,6 +4741,10 @@ int test_input_callback(void *data)
 			ret = bt_gatt_set_value(battery_h.chr, char_value, 1);
 			TC_PRT("Value[%d], returns %s\n", char_value[0], __bt_get_error_message(ret));
 
+			/* notify only client remote_addr */
+			ret = bt_gatt_server_notify(battery_h.chr, true, __bt_gatt_server_notification_sent_cb, remote_addr, NULL);
+			TC_PRT("bt_gatt_server_notify : %s\n", __bt_get_error_message(ret));
+
 			break;
 		}
 		case BT_UNIT_TEST_FUNCTION_GATT_SERVER_REGISTER_HEART_RATE_SVC: {
@@ -4813,7 +4817,8 @@ int test_input_callback(void *data)
 			ret = bt_gatt_set_int_value(heart_rate_h.chr, BT_DATA_TYPE_UINT16, char_value, 1);
 			TC_PRT("bt_gatt_set_value(value : %d) : %s\n", char_value, __bt_get_error_message(ret));
 
-			ret = bt_gatt_server_notify(heart_rate_h.chr, false, __bt_gatt_server_notification_sent_cb, NULL);
+			/* Notify all client devices */
+			ret = bt_gatt_server_notify(heart_rate_h.chr, true, __bt_gatt_server_notification_sent_cb, NULL, NULL);
 			TC_PRT("bt_gatt_server_notify : %s\n", __bt_get_error_message(ret));
 
 			break;
@@ -4873,6 +4878,10 @@ int test_input_callback(void *data)
 			}
 			ret = bt_gatt_set_float_value(thermometer_h.chr, BT_DATA_TYPE_FLOAT, 123, -2, 1);
 			TC_PRT("bt_gatt_set_value(value : 1.23) : %s\n", __bt_get_error_message(ret));
+
+			/* notify only client remote_addr */
+			ret = bt_gatt_server_notify(thermometer_h.chr, true, __bt_gatt_server_notification_sent_cb, remote_addr, NULL);
+			TC_PRT("bt_gatt_server_notify : %s\n", __bt_get_error_message(ret));
 
 			break;
 		}
