@@ -20,6 +20,7 @@
 #include <string.h>
 #include "bluetooth.h"
 #include "bluetooth_internal.h"
+#include "bluetooth_extension.h"
 #include "bluetooth_private.h"
 #include "bluetooth-audio-api.h"
 #include "bluetooth-telephony-api.h"
@@ -29,7 +30,11 @@ typedef struct _call_list_s {
 	GList *list;
 } call_list_s;
 
-static bool is_audio_initialized = false;
+static bool is_audio_a2dp_initialized = false;
+#ifdef TIZEN_WEARABLE
+static bool is_audio_hf_initialized = false;
+#endif
+static bool is_audio_ag_initialized = false;
 
 #if defined (TIZEN_HFP_DISABLE) && defined (TIZEN_A2DP_DISABLE)
 #define BT_CHECK_AUDIO_SUPPORT() \
@@ -64,22 +69,44 @@ static bool is_audio_initialized = false;
 #define BT_CHECK_A2DP_SUPPORT()
 #endif
 
+#ifdef TIZEN_AUDIO_HF_DISABLE
+#define BT_CHECK_HF_SUPPORT() \
+		{ \
+			BT_CHECK_BT_SUPPORT(); \
+			LOGE("[%s] NOT_SUPPORTED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_SUPPORTED); \
+			return BT_ERROR_NOT_SUPPORTED; \
+		}
+#else
+#define BT_CHECK_HF_SUPPORT()
+#endif
+
 #define BT_CHECK_AUDIO_INIT_STATUS() \
-	if (__bt_check_audio_init_status() == BT_ERROR_NOT_INITIALIZED) \
+	if (is_audio_a2dp_initialized != true && is_audio_ag_initialized != true) \
 	{ \
 		LOGE("[%s] NOT_INITIALIZED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_INITIALIZED); \
 		return BT_ERROR_NOT_INITIALIZED; \
 	}
 
-int __bt_check_audio_init_status(void)
-{
-	if (is_audio_initialized != true) {
-		BT_ERR("NOT_INITIALIZED(0x%08x)", BT_ERROR_NOT_INITIALIZED);
-		return BT_ERROR_NOT_INITIALIZED;
+#define BT_CHECK_A2DP_INIT_STATUS() \
+	if (is_audio_a2dp_initialized != true) \
+	{ \
+		LOGE("[%s] NOT_INITIALIZED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_INITIALIZED); \
+		return BT_ERROR_NOT_INITIALIZED; \
 	}
 
-	return BT_ERROR_NONE;
-}
+#define BT_CHECK_HF_INIT_STATUS() \
+	if (is_audio_hf_initialized != true) \
+	{ \
+		LOGE("[%s] NOT_INITIALIZED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_INITIALIZED); \
+		return BT_ERROR_NOT_INITIALIZED; \
+	}
+
+#define BT_CHECK_AG_INIT_STATUS() \
+	if (is_audio_ag_initialized != true) \
+	{ \
+		LOGE("[%s] NOT_INITIALIZED(0x%08x)", __FUNCTION__, BT_ERROR_NOT_INITIALIZED); \
+		return BT_ERROR_NOT_INITIALIZED; \
+	}
 
 /*The below API is just to convert the error from Telephony API's to CAPI error codes,
 * this is temporary change and changes to proper error code will be done in
@@ -124,32 +151,41 @@ int bt_audio_initialize(void)
 
 	BT_CHECK_AUDIO_SUPPORT();
 	BT_CHECK_INIT_STATUS();
+
 	error = bluetooth_audio_init(_bt_audio_event_proxy, NULL);
 	error = _bt_get_error_code(error);
-	if (BT_ERROR_NONE != error) {
+	if (BT_ERROR_NONE != error)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
-		return error;
-	}
+	else
+		is_audio_a2dp_initialized = true;
 
 #ifdef TIZEN_WEARABLE
 	error = bluetooth_hf_init(_bt_hf_event_proxy, NULL);
 	error = _bt_get_error_code(error);
-	if (BT_ERROR_NONE != error) {
+	if (BT_ERROR_NONE != error)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
-		return error;
-	}
+	else
+		is_audio_hf_initialized = true;
 #endif
 
 #ifndef TELEPHONY_DISABLED /* B2_3G */
 	error = bluetooth_telephony_init((void *)_bt_telephony_event_proxy, NULL);
 	error = _bt_convert_telephony_error_code(error);
-	if (BT_ERROR_NONE != error) {
+	if (BT_ERROR_NONE != error)
 		BT_ERR("[%s] (0x%08x)", _bt_convert_error_to_string(error), error);
-		return error;
-	}
+	else
+		is_audio_ag_initialized = true;
 #endif
 
-	is_audio_initialized = true;
+	/* There is no success case for 3 profiles */
+	if (!is_audio_a2dp_initialized &&
+#ifdef TIZEN_WEARABLE
+		!is_audio_hf_initialized &&
+#endif
+		 !is_audio_ag_initialized) {
+		return BT_ERROR_OPERATION_FAILED;
+	}
+
 	return BT_ERROR_NONE;
 }
 
@@ -159,34 +195,32 @@ int bt_audio_deinitialize(void)
 
 	BT_CHECK_AUDIO_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+
+	error = bluetooth_audio_deinit();
+	error = _bt_get_error_code(error);
+	if (BT_ERROR_NONE != error)
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+
+	is_audio_a2dp_initialized = false;
 
 #ifdef TIZEN_WEARABLE
 	error = bluetooth_hf_deinit();
 	error = _bt_get_error_code(error);
-	if (BT_ERROR_NONE != error) {
+	if (BT_ERROR_NONE != error)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
-		return error;
-	}
-#endif
 
-	error = bluetooth_audio_deinit();
-	error = _bt_get_error_code(error);
-	if (BT_ERROR_NONE != error) {
-		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
-		return error;
-	}
+	is_audio_hf_initialized = false;
+#endif
 
 #ifndef TELEPHONY_DISABLED /* B2_3G */
 	error = bluetooth_telephony_deinit();
 	error = _bt_convert_telephony_error_code(error);
-	if (BT_ERROR_NONE != error) {
+	if (BT_ERROR_NONE != error)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
-		return error;
-	}
+
+	is_audio_ag_initialized = false;
 #endif
 
-	is_audio_initialized = false;
 	return BT_ERROR_NONE;
 }
 
@@ -197,22 +231,21 @@ int bt_audio_connect(const char *remote_address, bt_audio_profile_type_e type)
 
 	BT_CHECK_AUDIO_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
 
 	if (type == BT_AUDIO_PROFILE_TYPE_HSP_HFP) {
 		BT_CHECK_HFP_SUPPORT();
-#ifdef TELEPHONY_DISABLED
-		BT_ERR("NOT SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-		return BT_ERROR_NOT_SUPPORTED;
-#endif
+		BT_CHECK_AG_INIT_STATUS();
 	} else if (type == BT_AUDIO_PROFILE_TYPE_A2DP) {
 		BT_CHECK_A2DP_SUPPORT();
+		BT_CHECK_A2DP_INIT_STATUS();
 	} else if (type == BT_AUDIO_PROFILE_TYPE_ALL) {
 #if defined (TIZEN_HFP_DISABLE) || defined (TELEPHONY_DISABLED)
+		BT_CHECK_A2DP_INIT_STATUS();
 		BT_ERR("HSP NOT SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
 		type = BT_AUDIO_PROFILE_TYPE_A2DP;
 #else
-		BT_ERR("ALL SUPPORTED");
+		BT_CHECK_AUDIO_INIT_STATUS();
+		BT_ERR("HSP and A2DP SUPPORTED");
 		type = BT_AUDIO_PROFILE_TYPE_ALL;
 #endif
 	}
@@ -252,16 +285,23 @@ int bt_audio_disconnect(const char *remote_address, bt_audio_profile_type_e type
 
 	BT_CHECK_AUDIO_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
 
 	if (type == BT_AUDIO_PROFILE_TYPE_HSP_HFP) {
 		BT_CHECK_HFP_SUPPORT();
-#ifdef TELEPHONY_DISABLED
-		BT_ERR("NOT SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-		return BT_ERROR_NOT_SUPPORTED;
-#endif
+		BT_CHECK_AG_INIT_STATUS();
 	} else if (type == BT_AUDIO_PROFILE_TYPE_A2DP) {
 		BT_CHECK_A2DP_SUPPORT();
+		BT_CHECK_A2DP_INIT_STATUS();
+	} else if (type == BT_AUDIO_PROFILE_TYPE_ALL) {
+#if defined (TIZEN_HFP_DISABLE) || defined (TELEPHONY_DISABLED)
+		BT_CHECK_A2DP_INIT_STATUS();
+		BT_ERR("HSP NOT SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
+		type = BT_AUDIO_PROFILE_TYPE_A2DP;
+#else
+		BT_CHECK_AUDIO_INIT_STATUS();
+		BT_ERR("HSP and A2DP SUPPORTED");
+		type = BT_AUDIO_PROFILE_TYPE_ALL;
+#endif
 	}
 
 	BT_CHECK_INPUT_PARAMETER(remote_address);
@@ -312,34 +352,13 @@ int bt_audio_unset_connection_state_changed_cb(void)
 	return BT_ERROR_NONE;
 }
 
-int bt_a2dp_source_audio_set_connection_state_changed_cb(bt_audio_connection_state_changed_cb callback, void *user_data)
-{
-	BT_CHECK_AUDIO_SUPPORT();
-	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
-	BT_CHECK_INPUT_PARAMETER(callback);
-	_bt_set_cb(BT_EVENT_A2DP_SOURCE_CONNECTION_STATUS, callback, user_data);
-	return BT_ERROR_NONE;
-
-}
-
-int bt_a2dp_source_audio_unset_connection_state_changed_cb(void)
-{
-	BT_CHECK_AUDIO_SUPPORT();
-	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
-	if (_bt_check_cb(BT_EVENT_A2DP_SOURCE_CONNECTION_STATUS) == true)
-		_bt_unset_cb(BT_EVENT_A2DP_SOURCE_CONNECTION_STATUS);
-	return BT_ERROR_NONE;
-}
-
 int bt_ag_notify_speaker_gain(int gain)
 {
 	int error;
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	error = bluetooth_telephony_set_speaker_gain((unsigned short)gain);
 	error = _bt_convert_telephony_error_code(error);
 	if (BT_ERROR_NONE != error) {
@@ -354,7 +373,7 @@ int bt_ag_get_speaker_gain(int *gain)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(gain);
 	error = bluetooth_telephony_get_headset_volume((unsigned int *)gain);
 	error = _bt_convert_telephony_error_code(error);
@@ -371,7 +390,7 @@ int bt_ag_is_nrec_enabled(bool *enabled)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(enabled);
 
 	error = bluetooth_telephony_is_nrec_enabled(&is_enabled);
@@ -394,7 +413,7 @@ int bt_ag_is_wbs_mode(bool *wbs_mode)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(wbs_mode);
 
 	error = bluetooth_telephony_is_wbs_mode(&is_wbs_mode);
@@ -415,7 +434,7 @@ int bt_ag_set_microphone_gain_changed_cb(bt_ag_microphone_gain_changed_cb callba
 	BT_CHECK_HFP_SUPPORT();
 
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_AG_MICROPHONE_GAIN_CHANGE, callback, user_data);
 	return BT_ERROR_NONE;
@@ -425,7 +444,7 @@ int bt_ag_unset_microphone_gain_changed_cb(void)
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (_bt_check_cb(BT_EVENT_AG_MICROPHONE_GAIN_CHANGE) == true)
 		_bt_unset_cb(BT_EVENT_AG_MICROPHONE_GAIN_CHANGE);
 	return BT_ERROR_NONE;
@@ -436,7 +455,7 @@ int bt_ag_set_speaker_gain_changed_cb(bt_ag_speaker_gain_changed_cb callback,
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_AG_SPEAKER_GAIN_CHANGE, callback, user_data);
 	return BT_ERROR_NONE;
@@ -447,7 +466,7 @@ int bt_ag_unset_speaker_gain_changed_cb(void)
 	BT_CHECK_HFP_SUPPORT();
 
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (_bt_check_cb(BT_EVENT_AG_SPEAKER_GAIN_CHANGE) == true)
 		_bt_unset_cb(BT_EVENT_AG_SPEAKER_GAIN_CHANGE);
 	return BT_ERROR_NONE;
@@ -459,7 +478,7 @@ int bt_ag_open_sco(void)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	error = bluetooth_telephony_audio_open();
 	error = _bt_convert_telephony_error_code(error);
 	if (error != BT_ERROR_NONE) {
@@ -474,7 +493,7 @@ int bt_ag_close_sco(void)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	error = bluetooth_telephony_audio_close();
 	error = _bt_convert_telephony_error_code(error);
 	if (error != BT_ERROR_NONE) {
@@ -487,7 +506,7 @@ int bt_ag_is_sco_opened(bool *opened)
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(opened);
 	if (bluetooth_telephony_is_sco_connected())
 		*opened = true;
@@ -501,7 +520,7 @@ int bt_ag_set_sco_state_changed_cb(bt_ag_sco_state_changed_cb callback,
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_AG_SCO_CONNECTION_STATUS, callback, user_data);
 	return BT_ERROR_NONE;
@@ -511,7 +530,7 @@ int bt_ag_unset_sco_state_changed_cb(void)
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (_bt_check_cb(BT_EVENT_AG_SCO_CONNECTION_STATUS) == true)
 		_bt_unset_cb(BT_EVENT_AG_SCO_CONNECTION_STATUS);
 	return BT_ERROR_NONE;
@@ -523,7 +542,7 @@ int bt_ag_notify_call_event(bt_ag_call_event_e event, unsigned int call_id, cons
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_INFO("call_id [%d] / event [%d]", call_id, event);
 
 	switch(event) {
@@ -570,7 +589,7 @@ int bt_ag_notify_call_list(bt_call_list_h list)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(list);
 	handle = (call_list_s *)list;
 	call_count = g_list_length(handle->list);
@@ -588,7 +607,7 @@ int bt_ag_notify_voice_recognition_state(bool state)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (state)
 		error = bluetooth_telephony_start_voice_recognition();
 	else
@@ -605,7 +624,7 @@ int bt_ag_set_call_handling_event_cb(bt_ag_call_handling_event_cb callback,
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_AG_CALL_HANDLING_EVENT, callback, user_data);
 	return BT_ERROR_NONE;
@@ -615,7 +634,7 @@ int bt_ag_unset_call_handling_event_cb(void)
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (_bt_check_cb(BT_EVENT_AG_CALL_HANDLING_EVENT) == true)
 		_bt_unset_cb(BT_EVENT_AG_CALL_HANDLING_EVENT);
 	return BT_ERROR_NONE;
@@ -627,7 +646,7 @@ int bt_ag_set_multi_call_handling_event_cb(
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_AG_MULTI_CALL_HANDLING_EVENT, callback, user_data);
 	return BT_ERROR_NONE;
@@ -637,7 +656,7 @@ int bt_ag_unset_multi_call_handling_event_cb(void)
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (_bt_check_cb(BT_EVENT_AG_MULTI_CALL_HANDLING_EVENT) == true)
 		_bt_unset_cb(BT_EVENT_AG_MULTI_CALL_HANDLING_EVENT);
 	return BT_ERROR_NONE;
@@ -648,7 +667,7 @@ int bt_ag_set_dtmf_transmitted_cb(bt_ag_dtmf_transmitted_cb callback,
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_AG_DTMF_TRANSMITTED, callback, user_data);
 	return BT_ERROR_NONE;
@@ -658,7 +677,7 @@ int bt_ag_unset_dtmf_transmitted_cb(void)
 {
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	if (_bt_check_cb(BT_EVENT_AG_DTMF_TRANSMITTED) == true)
 		_bt_unset_cb(BT_EVENT_AG_DTMF_TRANSMITTED);
 	return BT_ERROR_NONE;
@@ -671,6 +690,7 @@ int bt_ag_is_connected(bool *connected)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(connected);
 
 	error = bluetooth_telephony_is_connected(&is_connected);
@@ -692,7 +712,7 @@ int bt_call_list_create(bt_call_list_h *list)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(list);
 	if (*list != NULL) {
 		BT_ERR("BT_ERROR_ALREADY_DONE(0x%08x)", BT_ERROR_ALREADY_DONE);
@@ -715,7 +735,7 @@ int bt_call_list_destroy(bt_call_list_h list)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(list);
 	handle = (call_list_s *)list;
 	result = bt_call_list_reset(list);
@@ -730,7 +750,7 @@ int bt_call_list_reset(bt_call_list_h list)
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(list);
 	handle = (call_list_s *)list;
 	do  {
@@ -754,7 +774,7 @@ int bt_call_list_add(bt_call_list_h list, unsigned int call_id, bt_ag_call_state
 
 	BT_CHECK_HFP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
-	BT_CHECK_AUDIO_INIT_STATUS();
+	BT_CHECK_AG_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(list);
 	BT_CHECK_INPUT_PARAMETER(phone_number);
 
@@ -772,10 +792,29 @@ int bt_call_list_add(bt_call_list_h list, unsigned int call_id, bt_ag_call_state
 	return BT_ERROR_NONE;
 }
 
+int bt_a2dp_set_content_protection(bool status)
+{
+	int error;
+
+	BT_CHECK_A2DP_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_A2DP_INIT_STATUS();
+
+	error = bluetooth_a2dp_set_content_protection(status);
+	error = _bt_get_error_code(error);
+	if (BT_ERROR_NONE != error) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
+		return error;
+	}
+	return error;
+}
+
 #ifdef TIZEN_WEARABLE
 int bt_hf_initialize(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error;
 
 	BT_CHECK_INIT_STATUS();
@@ -786,15 +825,13 @@ int bt_hf_initialize(void)
 		return error;
 	}
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_deinitialize(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error;
 
 	BT_CHECK_INIT_STATUS();
@@ -805,18 +842,15 @@ int bt_hf_deinitialize(void)
 		return error;
 	}
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_notify_call_event(bt_hf_call_event_e event, char *phone_number)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error = BT_ERROR_NONE;
 
-	BT_CHECK_INIT_STATUS();
 	BT_INFO("event [%d]", event);
 
 	switch(event) {
@@ -858,144 +892,116 @@ int bt_hf_notify_call_event(bt_hf_call_event_e event, char *phone_number)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 	}
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_notify_speaker_gain(int gain)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error;
 
-	BT_CHECK_INIT_STATUS();
 	error = bluetooth_hf_set_speaker_gain((unsigned int)gain);
 	error = _bt_get_error_code(error);
 	if (BT_ERROR_NONE != error)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_set_speaker_gain_changed_cb(bt_hf_speaker_gain_changed_cb callback, void *user_data)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
 	BT_CHECK_INPUT_PARAMETER(callback);
+
 	_bt_set_cb(BT_EVENT_HF_SPEAKER_GAIN_CHANGE, callback, user_data);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_unset_speaker_gain_changed_cb(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	if (_bt_check_cb(BT_EVENT_HF_SPEAKER_GAIN_CHANGE) == true)
 		_bt_unset_cb(BT_EVENT_HF_SPEAKER_GAIN_CHANGE);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_notify_voice_recognition_state(bool state)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error;
 
-	BT_CHECK_INIT_STATUS();
 	error = bluetooth_hf_voice_recognition(state);
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_set_call_status_updated_event_cb(bt_hf_call_status_updated_event_cb callback, void *user_data)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_HF_CALL_STATUS_UPDATED_EVENT, callback, user_data);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_unset_call_status_updated_event_cb(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	if (_bt_check_cb(BT_EVENT_HF_CALL_STATUS_UPDATED_EVENT) == true)
 		_bt_unset_cb(BT_EVENT_HF_CALL_STATUS_UPDATED_EVENT);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_close_sco(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error;
 
-	BT_CHECK_INIT_STATUS();
 	error = bluetooth_hf_audio_disconnect();
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_send_dtmf(char *dtmf)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	int error;
 
-	BT_CHECK_INIT_STATUS();
 	error = bluetooth_hf_send_dtmf(dtmf);
 	error = _bt_get_error_code(error);
 	if (error != BT_ERROR_NONE)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_is_connected(bool *connected)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+	BT_CHECK_INPUT_PARAMETER(connected);
+
 	int error;
 	gboolean is_connected = false;
-
-	BT_CHECK_INIT_STATUS();
-	BT_CHECK_INPUT_PARAMETER(connected);
 
 	error = bluetooth_hf_is_connected(&is_connected);
 	error = _bt_get_error_code(error);
@@ -1008,20 +1014,16 @@ int bt_hf_is_connected(bool *connected)
 		*connected = false;
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_is_sco_opened(bool *opened)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+	BT_CHECK_INPUT_PARAMETER(opened);
+
 	int error;
 	unsigned int audio_connected = BLUETOOTH_HF_AUDIO_DISCONNECTED;
-
-	BT_CHECK_INIT_STATUS();
-	BT_CHECK_INPUT_PARAMETER(opened);
 
 	error = bluetooth_hf_get_audio_connected(&audio_connected);
 	error = _bt_get_error_code(error);
@@ -1034,19 +1036,15 @@ int bt_hf_is_sco_opened(bool *opened)
 		*opened = false;
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_get_codec_id(unsigned int *codec_id)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
-	int error;
-
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
 	BT_CHECK_INPUT_PARAMETER(codec_id);
+
+	int error;
 
 	error = bluetooth_hf_get_codec(codec_id);
 	error = _bt_get_error_code(error);
@@ -1054,21 +1052,17 @@ int bt_hf_get_codec_id(unsigned int *codec_id)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error), error);
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_get_call_status_info_list(GSList **call_list)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
+	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+	BT_CHECK_INPUT_PARAMETER(call_list);
+
 	int error;
 	bt_hf_call_list_s *hf_call_list = NULL;
 	GList *l;
-
-	BT_CHECK_INIT_STATUS();
-	BT_CHECK_INPUT_PARAMETER(call_list);
 
 	error = bluetooth_hf_request_call_list(&hf_call_list);
 	error = _bt_get_error_code(error);
@@ -1094,115 +1088,86 @@ int bt_hf_get_call_status_info_list(GSList **call_list)
 	bluetooth_hf_free_call_list(hf_call_list);
 
 	return error;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 static void __bt_hf_free_call_status_info(void *data)
 {
 	bt_hf_call_status_info_s *call_info = (bt_hf_call_status_info_s*)data;
 	g_free(call_info->number);
 	g_free(call_info);
 }
-#endif
 
 int bt_hf_free_call_status_info_list(GSList *call_list)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
 	BT_CHECK_INPUT_PARAMETER(call_list);
 
 	g_slist_free_full(call_list, __bt_hf_free_call_status_info);
 
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_set_sco_state_changed_cb(bt_hf_sco_state_changed_cb callback,
 					void *user_data)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
 	BT_CHECK_INPUT_PARAMETER(callback);
 	_bt_set_cb(BT_EVENT_HF_SCO_CONNECTION_STATUS, callback, user_data);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_unset_sco_state_changed_cb(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	if (_bt_check_cb(BT_EVENT_HF_SCO_CONNECTION_STATUS) == true)
 		_bt_unset_cb(BT_EVENT_HF_SCO_CONNECTION_STATUS);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_set_call_handling_event_cb(bt_hf_call_handling_event_cb callback,
 					void *user_data)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
 	BT_CHECK_INPUT_PARAMETER(callback);
+
 	_bt_set_cb(BT_EVENT_HF_CALL_HANDLING_EVENT, callback, user_data);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_unset_call_handling_event_cb(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	if (_bt_check_cb(BT_EVENT_HF_CALL_HANDLING_EVENT) == true)
 		_bt_unset_cb(BT_EVENT_HF_CALL_HANDLING_EVENT);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_set_multi_call_handling_event_cb(
 					bt_hf_multi_call_handling_event_cb callback,
 					void *user_data)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
 	BT_CHECK_INPUT_PARAMETER(callback);
+
 	_bt_set_cb(BT_EVENT_HF_MULTI_CALL_HANDLING_EVENT, callback, user_data);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int bt_hf_unset_multi_call_handling_event_cb(void)
 {
-#ifdef TIZEN_AUDIO_HF_SUPPORT
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_HF_SUPPORT();
+
 	if (_bt_check_cb(BT_EVENT_HF_MULTI_CALL_HANDLING_EVENT) == true)
 		_bt_unset_cb(BT_EVENT_HF_MULTI_CALL_HANDLING_EVENT);
 	return BT_ERROR_NONE;
-#else
-	BT_ERR("NOT_SUPPORTED(0x%08x)", BT_ERROR_NOT_SUPPORTED);
-	return BT_ERROR_NOT_SUPPORTED;
-#endif
 }
 #endif

@@ -231,6 +231,7 @@ int bt_socket_send_data(int socket_fd, const char *data, int length)
 
 	BT_CHECK_BT_SUPPORT();
 	BT_CHECK_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(data);
 
 	ret = bluetooth_rfcomm_write(socket_fd, data, length);
 	if (ret <= 0) {

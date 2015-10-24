@@ -2,7 +2,7 @@
 #include "bt_unit_test_gatt.h"
 
 bt_gatt_client_h gatt_client = NULL;
-char remote_addr[18] = "00:11:22:33:44:55";
+static char remote_addr[18] = "00:11:22:33:44:55";
 
 /* Mandatory Services for HR profile*/
 

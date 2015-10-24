@@ -372,6 +372,7 @@ int bt_avrcp_control_get_equalizer_state(bt_avrcp_equalizer_state_e *state)
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_AVRCP_CONTROL_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(state);
 	error = bluetooth_media_control_get_property(EQUALIZER, state);
 	error = _bt_convert_avrcp_error_code(error);
 	error = _bt_get_error_code(error);
@@ -404,6 +405,7 @@ int bt_avrcp_control_get_repeat_mode(bt_avrcp_repeat_mode_e *mode)
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_AVRCP_CONTROL_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(mode);
 	error = bluetooth_media_control_get_property(REPEAT, mode);
 	error = _bt_convert_avrcp_error_code(error);
 	error = _bt_get_error_code(error);
@@ -436,6 +438,7 @@ int bt_avrcp_control_get_shuffle_mode(bt_avrcp_shuffle_mode_e *mode)
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_AVRCP_CONTROL_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(mode);
 	error = bluetooth_media_control_get_property(SHUFFLE, mode);
 	error = _bt_convert_avrcp_error_code(error);
 	error = _bt_get_error_code(error);
@@ -467,6 +470,7 @@ int bt_avrcp_control_get_scan_mode(bt_avrcp_scan_mode_e *mode)
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_AVRCP_CONTROL_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(mode);
 	error = bluetooth_media_control_get_property(SCAN, mode);
 	error = _bt_convert_avrcp_error_code(error);
 	error = _bt_get_error_code(error);
@@ -483,6 +487,7 @@ int bt_avrcp_control_get_position(unsigned int *position)
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_AVRCP_CONTROL_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(position);
 	error = bluetooth_media_control_get_property(POSITION, position);
 	error = _bt_convert_avrcp_error_code(error);
 	error = _bt_get_error_code(error);
@@ -499,6 +504,7 @@ int bt_avrcp_control_get_play_status(bt_avrcp_player_state_e *status)
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_AVRCP_CONTROL_INIT_STATUS();
+	BT_CHECK_INPUT_PARAMETER(status);
 	error = bluetooth_media_control_get_property(STATUS, status);
 	error = _bt_convert_avrcp_error_code(error);
 	error = _bt_get_error_code(error);
@@ -512,7 +518,7 @@ int bt_avrcp_control_get_track_info(bt_avrcp_metadata_attributes_info_s **track)
 {
 	int error;
 	media_metadata_attributes_t metadata = {0,};
-	bt_avrcp_metadata_attributes_info_s *tr_info;
+	bt_avrcp_metadata_attributes_info_s *tr_info = NULL;
 
 	BT_CHECK_AVRCP_SUPPORT();
 	BT_CHECK_INIT_STATUS();
@@ -526,14 +532,16 @@ int bt_avrcp_control_get_track_info(bt_avrcp_metadata_attributes_info_s **track)
 	} else {
 		tr_info = (bt_avrcp_metadata_attributes_info_s *)g_malloc0(
 				sizeof(bt_avrcp_metadata_attributes_info_s));
-		tr_info->title = metadata.title;
-		tr_info->artist = metadata.artist;
-		tr_info->album = metadata.album;
-		tr_info->genre = metadata.genre;
-		tr_info->total_tracks = metadata.total_tracks;
-		tr_info->number = metadata.number;
-		tr_info->duration = metadata.duration;
-		*track = tr_info;
+		if (tr_info) {
+			tr_info->title = metadata.title;
+			tr_info->artist = metadata.artist;
+			tr_info->album = metadata.album;
+			tr_info->genre = metadata.genre;
+			tr_info->total_tracks = metadata.total_tracks;
+			tr_info->number = metadata.number;
+			tr_info->duration = metadata.duration;
+			*track = tr_info;
+		}
 	}
 	return error;
 }

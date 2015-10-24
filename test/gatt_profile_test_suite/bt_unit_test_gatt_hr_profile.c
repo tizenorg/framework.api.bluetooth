@@ -205,15 +205,18 @@ void __hr_client_dev_inf_read_complete_cb(int result, bt_gatt_h gatt_handle, voi
 
 	if (hex_format) {
 		str = g_malloc0(len * 5 + 1);
-		for (i = 0; i < len; i++) {
-			if (i > 0)
-				str[i * 5 - 1] = ' ';
+			if (str) {
+			for (i = 0; i < len; i++) {
+				if (i > 0)
+					str[i * 5 - 1] = ' ';
 
-			snprintf(&str[i * 5], 5, "0x%02X", value[i]);
+				snprintf(&str[i * 5], 5, "0x%02X", value[i]);
+			}
 		}
 	} else {
 		str = g_malloc0(len + 1);
-		memcpy(str, value, len);
+		if (str)
+			memcpy(str, value, len);
 	}
 
 	USR_PRT("Value : %s", str);
@@ -375,6 +378,7 @@ void hr_client_accept_input(char *buf)
 	}
 
 }
+
 int hr_client_initialize(void)
 {
 	int ret = BT_ERROR_NONE;
@@ -387,7 +391,7 @@ int hr_client_initialize(void)
 		goto fail;
 
 	ret = bt_adapter_enable();
-	if(ret == BT_ERROR_NONE || ret == BT_ERROR_ALREADY_DONE)
+	if (ret == BT_ERROR_NONE || ret == BT_ERROR_ALREADY_DONE)
 		DBG_PRT("Adapter enabled");
 	else
 		goto fail;

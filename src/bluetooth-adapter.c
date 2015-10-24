@@ -205,9 +205,13 @@ int bt_adapter_get_version(char **version)
 
 #define BT_ADAPTER_FIRMWARE_INFO_FILE_PATH "/var/lib/bluetooth/bcmtool_log"
 #define BT_ADAPTER_STACK_INFO_FILE_PATH "/usr/etc/bluetooth/stack_info"
+#define BT_ADAPTER_MAX_BUFFER_SIZE (32767 * 1000)
 
 int bt_adapter_get_local_info(char **chipset, char **firmware, char **stack_version, char **profiles)
 {
+	BT_CHECK_BT_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+
 	int ret = BT_ERROR_NONE;
 	FILE *fp = NULL;
 	char *buf = NULL;
@@ -353,6 +357,12 @@ int bt_adapter_get_local_info(char **chipset, char **firmware, char **stack_vers
 	}
 	info_size = info_end - info_start;
 
+	if (info_size < 0 || info_size > BT_ADAPTER_MAX_BUFFER_SIZE) {
+		BT_ERR("info size is incorrect: %ld", info_size);
+		ret = BT_ERROR_OPERATION_FAILED;
+		goto ERROR;
+	}
+
 	local_stack_version = (char *)malloc(sizeof(char) * (info_size + 1));
 	if (local_stack_version == NULL) {
 		ret = BT_ERROR_OUT_OF_MEMORY;
@@ -365,6 +375,12 @@ int bt_adapter_get_local_info(char **chipset, char **firmware, char **stack_vers
 
 	info_start = info_end + 2;
 	info_size = lsize - info_size - 3;
+
+	if (info_size < 0 || info_size > BT_ADAPTER_MAX_BUFFER_SIZE) {
+		BT_ERR("info size is incorrect: %ld", info_size);
+		ret = BT_ERROR_OPERATION_FAILED;
+		goto ERROR;
+	}
 
 	local_profiles = (char *)malloc(sizeof(char) * (info_size + 1));
 	if (local_profiles == NULL) {
@@ -974,7 +990,7 @@ int bt_adapter_set_remote_oob_data(const char *remote_address,
 	int ret = BT_ERROR_NONE;
 	bluetooth_device_address_t addr_hex = { {0,} };
 	bt_oob_data_t oob_data = { {0},};
-	
+
 	BT_CHECK_BT_SUPPORT();
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_INPUT_PARAMETER(remote_address);
@@ -1229,8 +1245,8 @@ static int __bt_remove_ad_data_by_type(char *in_data, unsigned int in_len,
 		BT_ERR("Invalid advertising data");
 		return BT_ERROR_OPERATION_FAILED;
 	} else if (len == 0 &&
-				in_type != BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME &&
-				in_type != BT_ADAPTER_LE_ADVERTISING_DATA_TX_POWER_LEVEL) {
+			in_type != BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME &&
+			in_type != BT_ADAPTER_LE_ADVERTISING_DATA_TX_POWER_LEVEL) {
 		BT_INFO("AD Type 0x%02x data is not set", in_type);
 		return BT_ERROR_OPERATION_FAILED;
 	}
@@ -1253,13 +1269,14 @@ int bt_adapter_le_add_advertising_data(bt_advertiser_h advertiser,
 		bt_adapter_le_packet_type_e pkt_type, bt_adapter_le_packet_data_type_e data_type,
 		void *data, unsigned int data_size)
 {
-	int ret = BT_ERROR_NONE;
 	bt_advertiser_s *__adv = (bt_advertiser_s *)advertiser;
 	char **p;
 	unsigned int *len;
 	unsigned int *system_data_len;
 	char *new_p;
 	bt_adapter_le_advertising_data_type_e adv_type;
+	int adv_flag_len = 0;
+	int adv_ext_len = 0;
 
 	adv_type = (bt_adapter_le_advertising_data_type_e)data_type;
 
@@ -1278,6 +1295,7 @@ int bt_adapter_le_add_advertising_data(bt_advertiser_h advertiser,
 		p = &__adv->adv_data;
 		len = &__adv->adv_data_len;
 		system_data_len = &__adv->adv_system_data_len;
+		adv_flag_len = 3;
 	} else if (pkt_type == BT_ADAPTER_LE_PACKET_SCAN_RESPONSE) {
 		p = &__adv->scan_rsp_data;
 		len = &__adv->scan_rsp_data_len;
@@ -1287,11 +1305,11 @@ int bt_adapter_le_add_advertising_data(bt_advertiser_h advertiser,
 
 	if (adv_type == BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME ||
 		adv_type == BT_ADAPTER_LE_ADVERTISING_DATA_TX_POWER_LEVEL)
-		*system_data_len += 1;
+		adv_ext_len = *system_data_len + 1;
 
 	/* 2 bytes are required for Length and AD Type */
-	if (*len + *system_data_len + data_size + 2 > 31) {
-		BT_ERR("Quota exceeded.(0x%08x)", ret);
+	if (adv_flag_len + *len + adv_ext_len + data_size + 2 > 31) {
+		BT_ERR("Quota exceeded");
 		return BT_ERROR_QUOTA_EXCEEDED;
 	}
 
@@ -1310,7 +1328,12 @@ int bt_adapter_le_add_advertising_data(bt_advertiser_h advertiser,
 
 	*p = new_p;
 	*len += data_size + 2;
-	return ret;
+
+	if (adv_type == BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME ||
+		adv_type == BT_ADAPTER_LE_ADVERTISING_DATA_TX_POWER_LEVEL)
+		*system_data_len += 1;
+
+	return BT_ERROR_NONE;
 }
 
 int bt_adapter_le_remove_advertising_data(bt_advertiser_h advertiser,
@@ -1373,6 +1396,9 @@ static int __bt_convert_string_to_uuid(const char *string, char **uuid, int *bit
 		unsigned short val;
 		char *stop;
 		data = g_malloc0(sizeof(char) * 2);
+		if (data == NULL)
+			return BT_ERROR_OUT_OF_MEMORY;
+
 		val = strtol(string, &stop, 16);
 		val = htons(val);
 		memcpy(data, &val, 2);
@@ -1491,14 +1517,19 @@ static int __bt_append_adv_type_data(bt_advertiser_h advertiser,
 	char *new_adv = NULL;
 	char *adv_data = NULL;
 	int adv_len = 0;
+	int adv_flag_len = 0;
+	int system_data_len = 0;
 	bt_advertiser_s *__adv = (bt_advertiser_s *)advertiser;
 
 	if (pkt_type == BT_ADAPTER_LE_PACKET_ADVERTISING) {
 		adv_data = __adv->adv_data;
 		adv_len = __adv->adv_data_len;
+		system_data_len = __adv->adv_system_data_len;
+		adv_flag_len = 3;
 	} else if (pkt_type == BT_ADAPTER_LE_PACKET_SCAN_RESPONSE) {
 		adv_data = __adv->scan_rsp_data;
 		adv_len = __adv->scan_rsp_data_len;
+		system_data_len = __adv->scan_rsp_system_data_len;
 	} else
 		return BT_ERROR_INVALID_PARAMETER;
 
@@ -1510,6 +1541,11 @@ static int __bt_append_adv_type_data(bt_advertiser_h advertiser,
 	if (data_type != dest_type) {
 		BT_ERR("Invalid data type");
 		return BT_ERROR_INVALID_PARAMETER;
+	}
+
+	if (adv_flag_len + adv_len + system_data_len + new_data_len > 31) {
+		BT_ERR("Quota exceeded");
+		return BT_ERROR_QUOTA_EXCEEDED;
 	}
 
 	new_adv = g_malloc0(adv_len + new_data_len);
@@ -2372,7 +2408,8 @@ int bt_adapter_le_get_scan_result_device_name(const bt_adapter_le_device_scan_re
 
 	while (adv_length > 0) {
 		field_len = adv_data[0];
-		if (adv_data[1] == BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME) {
+		if (adv_data[1] == BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME ||
+			adv_data[1] == BT_ADAPTER_LE_ADVERTISING_DATA_SHORT_LOCAL_NAME) {
 			*name = g_malloc0(sizeof(char) * field_len);
 			/* Fix : NULL_RETURNS */
 			if (*name == NULL)
@@ -2416,7 +2453,10 @@ int bt_adapter_le_get_scan_result_tx_power_level(const bt_adapter_le_device_scan
 	while (adv_length > 0) {
 		field_len = adv_data[0];
 		if (adv_data[1] == BT_ADAPTER_LE_ADVERTISING_DATA_TX_POWER_LEVEL) {
-			*power_level = (int)adv_data[2];
+			if (adv_data[2] & 0x80)
+				*power_level = 0xffffff00 | adv_data[2];
+			else
+				*power_level = (int)adv_data[2];
 
 			return BT_ERROR_NONE;
 		}
@@ -2638,8 +2678,9 @@ int bt_adapter_le_get_scan_result_appearance(const bt_adapter_le_device_scan_res
 	while (adv_length > 0) {
 		field_len = adv_data[0];
 		if (adv_data[1] == BT_ADAPTER_LE_ADVERTISING_DATA_APPEARANCE) {
-			*appearance = (int)adv_data[2];
-			*appearance |= (int)adv_data[3] << 8;
+			*appearance = adv_data[3] << 8;
+			*appearance += adv_data[2];
+
 
 			return BT_ERROR_NONE;
 		}
@@ -3054,5 +3095,97 @@ int bt_adapter_le_unregister_all_scan_filters(void)
 		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(error_code), error_code);
 	}
 
+	return BT_ERROR_NONE;
+}
+
+int bt_adapter_le_read_maximum_data_length(
+		int *max_tx_octets, int *max_tx_time,
+		int *max_rx_octets, int *max_rx_time)
+{
+	int ret = BT_ERROR_NONE;
+
+	BT_CHECK_BT_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+
+	bluetooth_le_read_maximum_data_length_t max_le_datalength;
+
+	ret = _bt_get_error_code(
+		bluetooth_le_read_maximum_data_length(&max_le_datalength));
+
+	if (ret != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+		return ret;
+	}
+
+	*max_tx_octets = max_le_datalength.max_tx_octets;
+	*max_tx_time = max_le_datalength.max_tx_time;
+	*max_rx_octets = max_le_datalength.max_rx_octets;
+	*max_rx_time = max_le_datalength.max_rx_time;
+
+	return ret;
+}
+
+int bt_adapter_le_write_host_suggested_default_data_length(
+	const unsigned int def_tx_Octets, const unsigned int def_tx_Time)
+{
+	int ret = BT_ERROR_NONE;
+
+	BT_CHECK_BT_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+
+	/*Range for host suggested txtime is 0x001B-0x00FB  and
+	txocets is 0x0148- 0x0848 as per BT 4.2 spec*/
+	if (((def_tx_Octets < 27 || def_tx_Octets > 251) ||
+		(def_tx_Time < 328 || def_tx_Time > 2120)) ||
+		((def_tx_Octets < 0x001B || def_tx_Octets > 0x00FB) ||
+		(def_tx_Time < 0x0148 || def_tx_Time > 0x0848))) {
+		return BT_ERROR_INVALID_PARAMETER;
+	}
+
+	ret = _bt_get_error_code(
+		bluetooth_le_write_host_suggested_default_data_length(
+					def_tx_Octets, def_tx_Time));
+
+	if (ret != BT_ERROR_NONE)
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+
+	return ret;
+}
+
+int bt_adapter_le_read_suggested_default_data_length(
+	unsigned int *def_tx_Octets,  unsigned int *def_tx_Time)
+{
+	int ret = BT_ERROR_NONE;
+
+	BT_CHECK_BT_SUPPORT();
+	BT_CHECK_INIT_STATUS();
+
+	bluetooth_le_read_host_suggested_data_length_t data_values;
+
+	ret = _bt_get_error_code(
+		bluetooth_le_read_suggested_default_data_length(&data_values));
+
+	if (ret != BT_ERROR_NONE) {
+		BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
+		return ret;
+	}
+
+	*def_tx_Octets = data_values.def_tx_octets;
+	*def_tx_Time = data_values.def_tx_time;
+
+	return ret;
+}
+
+int bt_adapter_set_authentication_req_cb(bt_adapter_authentication_req_cb callback, void *user_data)
+{
+	BT_CHECK_INIT_STATUS();
+	_bt_set_cb(BT_EVENT_AUTHENTICATION_REQUEST, callback, user_data);
+	return BT_ERROR_NONE;
+}
+
+int bt_adapter_unset_authentication_req_cb(void)
+{
+	BT_CHECK_INIT_STATUS();
+	_bt_unset_cb(BT_EVENT_AUTHENTICATION_REQUEST);
 	return BT_ERROR_NONE;
 }

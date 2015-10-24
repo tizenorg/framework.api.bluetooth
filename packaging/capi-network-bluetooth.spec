@@ -6,13 +6,19 @@ Release:    1
 Group:      TO_BE/FILLED_IN
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
+
 Requires(post): eglibc
 Requires(postun): eglibc
 
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(vconf)
+%if "%{?tizen_profile_name}" == "tv"
+BuildRequires:  pkgconfig(bluetooth-tv-api)
+BuildRequires:  pkgconfig(db-util)
+%else
 BuildRequires:  pkgconfig(bluetooth-api)
+%endif
 BuildRequires:  pkgconfig(capi-base-common)
 %if "%{?tizen_profile_name}" == "wearable"
 BuildRequires:  pkgconfig(privacy-manager-client)
@@ -20,7 +26,6 @@ BuildRequires:  pkgconfig(privacy-manager-client)
 
 BuildRequires:  cmake
 BuildRequires:  model-build-features
-
 
 %description
 Network Bluetooth Framework
@@ -79,30 +84,39 @@ export CXXFLAGS="$CXXFLAGS -DTIZEN_DEBUG_ENABLE -DTIZEN_ENGINEER_MODE"
 export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE -DTIZEN_ENGINEER_MODE"
 
 %if "%{?tizen_profile_name}" == "wearable"
-export CFLAGS="$CFLAGS -DTIZEN_WEARABLE"
-export CXXFLAGS="$CXXFLAGS -DTIZEN_WEARABLE"
-export FFLAGS="$FFLAGS -DTIZEN_WEARABLE"
+export CFLAGS="$CFLAGS -DTIZEN_WEARABLE -DTIZEN_AUDIO_HF_DISABLE"
+export CXXFLAGS="$CXXFLAGS -DTIZEN_WEARABLE -DTIZEN_AUDIO_HF_DISABLE"
+export FFLAGS="$FFLAGS -DTIZEN_WEARABLE -DTIZEN_AUDIO_HF_DISABLE"
 %endif
 
 %if "%{?tizen_profile_name}" == "mobile"
-export CFLAGS="$CFLAGS -DBT_ENABLE_LEGACY_GATT_CLIENT"
-export CXXFLAGS="$CXXFLAGS -DBT_ENABLE_LEGACY_GATT_CLIENT"
-export FFLAGS="$FFLAGS -DBT_ENABLE_LEGACY_GATT_CLIENT"
+export CFLAGS="$CFLAGS -DBT_ENABLE_LEGACY_GATT_CLIENT -DTIZEN_AUDIO_HF_DISABLE -DTIZEN_IPSP_SUPPORT"
+export CXXFLAGS="$CXXFLAGS -DBT_ENABLE_LEGACY_GATT_CLIENT -DTIZEN_AUDIO_HF_DISABLE -DTIZEN_IPSP_SUPPORT"
+export FFLAGS="$FFLAGS -DBT_ENABLE_LEGACY_GATT_CLIENT -DTIZEN_AUDIO_HF_DISABLE -DTIZEN_IPSP_SUPPORT"
+%endif
+
+%if "%{?tizen_profile_name}" == "tv"
+export CFLAGS="$CFLAGS -DTIZEN_GATT_DISABLE -DTIZEN_OPP_SERVER_DISABLE -DTIZEN_OPP_CLIENT_DISABLE \
+			-DTIZEN_PAN_DISABLE -DTELEPHONY_DISABLED -DTIZEN_HDP_DISABLE -DTIZEN_AUDIO_HF_DISABLE"
+export CXXFLAGS="$CXXFLAGS -DTIZEN_GATT_DISABLE -DTIZEN_OPP_SERVER_DISABLE -DTIZEN_OPP_CLIENT_DISABLE \
+			-DTIZEN_PAN_DISABLE -DTELEPHONY_DISABLED -DTIZEN_HDP_DISABLE -DTIZEN_AUDIO_HF_DISABLE"
+export FFLAGS="$FFLAGS -DTIZEN_GATT_DISABLE -DTIZEN_OPP_SERVER_DISABLE -DTIZEN_OPP_CLIENT_DISABLE \
+			-DTIZEN_PAN_DISABLE -DTELEPHONY_DISABLED -DTIZEN_HDP_DISABLE -DTIZEN_AUDIO_HF_DISABLE"
 %endif
 
 %if %{?model_build_feature_bt_disable_all}
 export CFLAGS="$CFLAGS -DTIZEN_BT_DISABLE -DTIZEN_LE_DISABLE -DTIZEN_GATT_DISABLE
 			-DTIZEN_OPP_SERVER_DISABLE -DTIZEN_OPP_CLIENT_DISABLE
-			-DTIZEN_PAN_DISABLE -DTIZEN_HID_DISABLE -DTELEPHONY_DISABLED
-			-DTIZEN_AVRCP_DISABLE -DTIZEN_HDP_DISABLE"
+			-DTIZEN_PAN_DISABLE -DTIZEN_HID_HOST_DISABLE -DTIZEN_HID_DEVICE_DISABLE
+			-DTELEPHONY_DISABLED -DTIZEN_AVRCP_DISABLE -DTIZEN_HDP_DISABLE -DTIZEN_AUDIO_HF_DISABLE"
 export CXXFLAGS="$CXXFLAGS -DTIZEN_BT_DISABLE -DTIZEN_LE_DISABLE -DTIZEN_GATT_DISABLE
 			-DTIZEN_OPP_SERVER_DISABLE -DTIZEN_OPP_CLIENT_DISABLE
-			-DTIZEN_PAN_DISABLE -DTIZEN_HID_DISABLE -DTELEPHONY_DISABLED
-			-DTIZEN_AVRCP_DISABLE -DTIZEN_HDP_DISABLE"
+			-DTIZEN_PAN_DISABLE -DTIZEN_HID_HOST_DISABLE -DTIZEN_HID_DEVICE_DISABLE
+			-DTELEPHONY_DISABLED -DTIZEN_AVRCP_DISABLE -DTIZEN_HDP_DISABLE -DTIZEN_AUDIO_HF_DISABLE"
 export FFLAGS="$FFLAGS -DTIZEN_BT_DISABLE -DTIZEN_LE_DISABLE -DTIZEN_GATT_DISABLE
 			-DTIZEN_OPP_SERVER_DISABLE -DTIZEN_OPP_CLIENT_DISABLE
-			-DTIZEN_PAN_DISABLE -DTIZEN_HID_DISABLE -DTELEPHONY_DISABLED
-			-DTIZEN_AVRCP_DISABLE -DTIZEN_HDP_DISABLE"
+			-DTIZEN_PAN_DISABLE -DTIZEN_HID_HOST_DISABLE -DTIZEN_HID_DEVICE_DISABLE 
+			-DTELEPHONY_DISABLED -DTIZEN_AVRCP_DISABLE -DTIZEN_HDP_DISABLE -DTIZEN_AUDIO_HF_DISABLE"
 %else
 %if %{?model_build_feature_bt_disable_le}
 export CFLAGS="$CFLAGS -DTIZEN_LE_DISABLE -DTIZEN_GATT_DISABLE"
@@ -123,9 +137,9 @@ export FFLAGS="$FFLAGS -DTIZEN_PAN_DISABLE"
 %endif
 
 %if %{?model_build_feature_bt_disable_hid}
-export CFLAGS="$CFLAGS -DTIZEN_HID_DISABLE"
-export CXXFLAGS="$CXXFLAGS -DTIZEN_HID_DISABLE"
-export FFLAGS="$FFLAGS -DTIZEN_HID_DISABLE"
+export CFLAGS="$CFLAGS -DTIZEN_HID_HOST_DISABLE -DTIZEN_HID_DEVICE_DISABLE"
+export CXXFLAGS="$CXXFLAGS -DTIZEN_HID_HOST_DISABLE -DTIZEN_HID_DEVICE_DISABLE"
+export FFLAGS="$FFLAGS -DTIZEN_HID_HOST_DISABLE -DTIZEN_HID_DEVICE_DISABLE"
 %endif
 
 %if %{?model_build_feature_bt_disable_audio_call}
@@ -151,7 +165,11 @@ export FFLAGS="$FFLAGS -DTIZEN_HDP_DISABLE"
 %if "%{?tizen_profile_name}" == "wearable"
 	-DTIZEN_WEARABLE=YES \
 %else
+%if "%{?tizen_profile_name}" == "tv"
+	-DTIZEN_TV=YES \
+%else
 	-DTIZEN_WEARABLE=NO \
+%endif
 %endif
 
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
@@ -164,11 +182,14 @@ rm -rf %{buildroot}
 %make_install
 install -D -m 0644 LICENSE %{buildroot}%{_datadir}/license/capi-network-bluetooth
 install -D -m 0644 LICENSE %{buildroot}%{_datadir}/license/capi-network-bluetooth-devel
+
+%if "%{?tizen_profile_name}" != "tv"
 install -D -m 0644 test_scripts/bt_on_test_while_infinite.service %{buildroot}%{_libdir}/systemd/system/bt_on_test_while_infinite.service
 install -D -m 0644 test/bt_infinite_spp_test_server.service %{buildroot}%{_libdir}/systemd/system/bt_infinite_spp_test_server.service
 install -D -m 0644 test/bt_infinite_spp_test_client.service %{buildroot}%{_libdir}/systemd/system/bt_infinite_spp_test_client.service
 
 install -D -m 0755 test_scripts/check_bt_during_infinite_boot.sh %{buildroot}/%{_prefix}/etc/bluetooth/check_bt_during_infinite_boot.sh
+%endif
 
 %post -p /sbin/ldconfig
 
@@ -180,19 +201,25 @@ install -D -m 0755 test_scripts/check_bt_during_infinite_boot.sh %{buildroot}/%{
 %{_datadir}/license/capi-network-bluetooth
 
 %files test
+%if "%{?tizen_profile_name}" != "tv"
 %manifest bluetooth-test.manifest
 %{_bindir}/bt_unit_test
 %{_bindir}/bt_onoff
 /etc/smack/accesses2.d/capi.network.bluetooth.test.rule
+%endif
 
 %files gatt-test
+%if "%{?tizen_profile_name}" != "tv"
 %manifest bluetooth-gatt-test.manifest
 %{_bindir}/bt_unit_test_gatt
 /etc/smack/accesses2.d/capi.network.bluetooth.test.gatt.rule
+%endif
 
 %files infinite-boot-test
+%if "%{?tizen_profile_name}" != "tv"
 %{_libdir}/systemd/system/bt_on_test_while_infinite.service
 %attr(755,-,-) %{_prefix}/etc/bluetooth/check_bt_during_infinite_boot.sh
+%endif
 
 %post infinite-boot-test
 /usr/bin/systemctl daemon-reload
@@ -202,10 +229,12 @@ install -D -m 0755 test_scripts/check_bt_during_infinite_boot.sh %{buildroot}/%{
 /usr/bin/systemctl disable bt_on_test_while_infinite.service
 
 %files infinite-spp-test-server
+%if "%{?tizen_profile_name}" != "tv"
 %manifest bluetooth-infinite-spp-test-server.manifest
 %{_bindir}/bt_infinite_spp_test
 %{_libdir}/systemd/system/bt_infinite_spp_test_server.service
 /etc/smack/accesses2.d/capi.network.bluetooth.infinite.spp.test.rule
+%endif
 
 %post infinite-spp-test-server
 /usr/bin/systemctl daemon-reload
@@ -215,10 +244,12 @@ install -D -m 0755 test_scripts/check_bt_during_infinite_boot.sh %{buildroot}/%{
 /usr/bin/systemctl disable bt_infinite_spp_test_server.service
 
 %files infinite-spp-test-client
+%if "%{?tizen_profile_name}" != "tv"
 %manifest bluetooth-infinite-spp-test-client.manifest
 %{_bindir}/bt_infinite_spp_test
 %{_libdir}/systemd/system/bt_infinite_spp_test_client.service
 /etc/smack/accesses2.d/capi.network.bluetooth.infinite.spp.test.rule
+%endif
 
 %post infinite-spp-test-client
 /usr/bin/systemctl daemon-reload
@@ -230,8 +261,21 @@ install -D -m 0755 test_scripts/check_bt_during_infinite_boot.sh %{buildroot}/%{
 %files devel
 %{_includedir}/network/bluetooth.h
 %{_includedir}/network/bluetooth_type.h
+
+%if "%{?tizen_profile_name}" == "tv"
+%{_includedir}/network/bluetooth_product.h
+%{_includedir}/network/bluetooth_type_product.h
+%{_includedir}/network/BTLogger.h
+%{_includedir}/network/BTLogger_interface.h
+%exclude %{_includedir}/network/bluetooth_private.h
+%endif
+
+%{_includedir}/network/bluetooth_extension.h
+%{_includedir}/network/bluetooth_type_extension.h
+
 %{_includedir}/network/bluetooth_internal.h
 %{_includedir}/network/bluetooth_type_internal.h
+
 %{_libdir}/pkgconfig/capi-network-bluetooth.pc
 %{_libdir}/libcapi-network-bluetooth.so
 %{_datadir}/license/capi-network-bluetooth-devel

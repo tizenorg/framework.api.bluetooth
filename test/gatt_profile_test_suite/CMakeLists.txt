@@ -12,6 +12,9 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -Wall")
 SET(SOURCES
 bt_unit_test_gatt.c
 bt_unit_test_gatt_hr_profile.c
+bt_unit_test_gatt_time_profile_client.c
+bt_unit_test_gatt_time_profile_server.c
+bt_unit_test_gatt_custom_profile_server.c
 )
 
 ADD_EXECUTABLE(${PROJECT_NAME} ${SOURCES})

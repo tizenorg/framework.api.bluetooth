@@ -9,6 +9,7 @@ extern "C" {
 #include <glib.h>
 #include <ctype.h>
 #include <time.h>
+#include <glib-object.h>
 
 #include "bluetooth.h"
 #include "bluetooth_internal.h"
@@ -33,6 +34,7 @@ typedef enum
 
 
 int hr_client_initialize(void);
+
 void hr_client_signal_handler(int);
 
 void hr_client_accept_input(char *buf);
@@ -40,4 +42,30 @@ void hr_client_accept_input(char *buf);
 gboolean hr_client_key_event_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data);
 
+int time_server_initialize(void);
+
+void time_server_signal_handler(int signno);
+
+void time_server_accept_input(char *buf);
+
+gboolean time_server_key_event_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data);
+
+int time_client_initialize(void);
+
+void time_client_signal_handler(int signno);
+
+void time_client_accept_input(char *buf);
+
+gboolean time_client_key_event_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data);
+
+int custom_server_initialize(void);
+
+void custom_server_signal_handler(int signno);
+
+void custom_server_accept_input(char *buf);
+
+gboolean custom_server_key_event_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data);
 

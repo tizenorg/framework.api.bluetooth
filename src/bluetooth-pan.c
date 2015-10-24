@@ -24,8 +24,6 @@
 #include "bluetooth.h"
 #include "bluetooth_private.h"
 
-GList *sending_files;
-
 #ifdef TIZEN_PAN_DISABLE
 #define BT_CHECK_PAN_SUPPORT() \
 		{ \
@@ -116,6 +114,8 @@ int bt_nap_set_connection_state_changed_cb(
 
 int bt_nap_unset_connection_state_changed_cb(void)
 {
+	BT_CHECK_PAN_SUPPORT();
+	BT_CHECK_INIT_STATUS();
 	_bt_unset_cb(BT_EVENT_NAP_CONNECTION_STATE_CHANGED);
 	return BT_ERROR_NONE;
 }
@@ -133,6 +133,8 @@ int bt_panu_set_connection_state_changed_cb(
 
 int bt_panu_unset_connection_state_changed_cb(void)
 {
+	BT_CHECK_PAN_SUPPORT();
+	BT_CHECK_INIT_STATUS();
 	_bt_unset_cb(BT_EVENT_PAN_CONNECTION_STATE_CHANGED);
 	return BT_ERROR_NONE;
 }

@@ -23,6 +23,7 @@
 #include <glib.h>
 
 #include "bluetooth.h"
+#include "bluetooth_internal.h"
 
 #define PRT(format, args...) printf("%s:%d() "format, __FUNCTION__, __LINE__, ##args)
 #define TC_PRT(format, args...) PRT(format"\n", ##args)

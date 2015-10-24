@@ -29,6 +29,96 @@ extern "C"
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_LE_MODULE
+ * @brief  Enumerations of the Bluetooth adapter le state.
+ * @since_tizen 2.3
+ */
+typedef enum
+{
+	BT_ADAPTER_LE_DISABLED = 0x00, /**< Bluetooth le is disabled */
+	BT_ADAPTER_LE_ENABLED, /**< Bluetooth le is enabled */
+} bt_adapter_le_state_e;
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_LE_MODULE
+ * @brief  Called when the Bluetooth adapter le state changes.
+ * @since_tizen 2.3
+ *
+ * @param[in]   result  The result of the adapter state changing
+ * @param[in]   adapter_le_state  The adapter le state to be changed
+ * @param[in]   user_data  The user data passed from the callback registration function
+ * @pre Either bt_adapter_le_enable() or bt_adapter_le_disable() will invoke this callback if you register this callback using bt_adapter_le_set_state_changed_cb().
+ * @see bt_adapter_le_enable()
+ * @see bt_adapter_le_disable()
+ * @see bt_adapter_le_set_state_changed_cb()
+ * @see bt_adapter_le_unset_state_changed_cb()
+ */
+typedef void (*bt_adapter_le_state_changed_cb)(int result, bt_adapter_le_state_e adapter_le_state, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
+ * @brief  Enumerations for the call state
+ * @since_tizen 2.3
+ */
+typedef enum {
+    BT_AG_CALL_EVENT_IDLE = 0x00,  /**< Idle */
+    BT_AG_CALL_EVENT_ANSWERED,  /**< Answered */
+    BT_AG_CALL_EVENT_HELD,  /**< Held */
+    BT_AG_CALL_EVENT_RETRIEVED,  /**< Retrieved */
+    BT_AG_CALL_EVENT_DIALING,  /**< Dialing */
+    BT_AG_CALL_EVENT_ALERTING,  /**< Alerting */
+    BT_AG_CALL_EVENT_INCOMING,  /**< Incoming */
+} bt_ag_call_event_e;
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
+ * @brief  Enumerations for the call state
+ * @since_tizen 2.3
+ */
+typedef enum {
+    BT_AG_CALL_STATE_IDLE = 0x00,  /**< Idle state */
+    BT_AG_CALL_STATE_ACTIVE,  /**< Active state */
+    BT_AG_CALL_STATE_HELD,  /**< Held state */
+    BT_AG_CALL_STATE_DIALING,  /**< Dialing state */
+    BT_AG_CALL_STATE_ALERTING,  /**< Alerting state */
+    BT_AG_CALL_STATE_INCOMING,  /**< Incoming state */
+    BT_AG_CALL_STATE_WAITING,  /**< Waiting for connected indication event after answering an incoming call*/
+} bt_ag_call_state_e;
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief  Called when the connectable state changes.
+ * @since_tizen 2.3
+ *
+ * @param[in] result The result of the connectable state changing
+ * @param[in] connectable The connectable to be changed
+ * @param[in] user_data The user data passed from the callback registration function
+ *
+ * @pre This function will be invoked when the connectable state of local Bluetooth adapter changes
+ * if you register this callback using bt_adapter_set_connectable_changed_cb().
+ *
+ * @see bt_adapter_set_connectable()
+ * @see bt_adapter_set_connectable_changed_cb()
+ * @see bt_adapter_unset_connectable_changed_cb()
+ */
+typedef void (*bt_adapter_connectable_changed_cb)
+	(int result, bool connectable, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_OPP_SERVER_MODULE
+ * @brief  Called when the push is requested.
+ * @since_tizen 2.3
+ *
+ * @details You must call bt_opp_server_accept() if you want to accept.
+ * Otherwise, you must call bt_opp_server_reject().
+ * @param[in] file  The path of file to be pushed
+ * @param[in] size The file size (bytes)
+ * @param[in] user_data The user data passed from the callback registration function
+ * @see bt_opp_server_initialize()
+ */
+typedef void (*bt_opp_server_push_requested_cb)(const char *file, int size, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_LE_MODULE
  * @brief  Enumerations of the Bluetooth adapter le scan type.
  * @since_tizen 2.3
  */
@@ -51,7 +141,6 @@ typedef enum
 } bt_adapter_le_scan_mode_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
  * @brief  Called when the manufacturer dat changes.
  * @since_tizen 2.3
@@ -140,6 +229,20 @@ typedef void (*bt_gatt_server_read_value_requested_cb) (char *remote_address,
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_GATT_MODULE
+ * @brief  Called when the remote device enables or disables the Notification/Indication for particular characteristics.
+ * @since_tizen 2.4
+ *
+ * @param[in] server The GATT server handle
+ * @param[in] gatt_handle The characteristic's GATT handle to be read
+ * @param[in] user_data The user data passed from the registration function
+ *
+ * @see bt_gatt_server_set_read_value_requested_cb()
+ */
+typedef void (*bt_gatt_server_notification_state_change_cb) (bool notify,
+			bt_gatt_server_h server, bt_gatt_h gatt_handle, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_GATT_MODULE
  * @brief  Called when the sending notification / indication is done
  * @since_tizen 2.4
  *
@@ -161,7 +264,6 @@ typedef void (*bt_gatt_server_notification_sent_cb) (int result,
 		bt_gatt_h characteristic, bool completed, void *user_data);
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Enumerations for the player control command
  * @since_tizen 2.3
@@ -176,8 +278,7 @@ typedef void (*bt_gatt_server_notification_sent_cb) (int result,
 	BT_AVRCP_CONTROL_REWIND   /**< Rewind */
 } bt_avrcp_player_command_e;
 
- /**
- * @internal
+/**
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief Structure of Track metadata information.
  * @since_tizen 2.3
@@ -195,7 +296,6 @@ typedef struct {
 } bt_avrcp_metadata_attributes_info_s;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Called when the connection state is changed.
  * @since_tizen 2.3
@@ -242,6 +342,19 @@ typedef void (*bt_avrcp_track_info_changed_cb) (bt_avrcp_metadata_attributes_inf
  * @see bt_avrcp_unset_play_status_changed_cb()
  */
 typedef void (*bt_avrcp_play_status_changed_cb) (bt_avrcp_player_state_e play_state, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
+ * @brief Device LE connection update structure.
+ * @since_tizen 2.3
+ */
+typedef struct
+{
+       unsigned int interval_min;   /**< Minimum value for the connection event interval (msec) */
+       unsigned int interval_max;   /**< Maximum value for the connection event interval (msec) */
+       unsigned int latency;   /**< Slave latency (msec) */
+       unsigned int time_out;   /**< Supervision timeout (msec) */
+} bt_le_conn_update_s;
 
 /**
  * @}

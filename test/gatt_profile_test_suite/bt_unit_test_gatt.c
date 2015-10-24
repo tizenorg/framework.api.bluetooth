@@ -19,6 +19,8 @@ void sig_handler(int signo)
 
 static struct option main_options[] = {
 	{ "heart-rate-profile", optional_argument, NULL, 'H' },
+	{ "time-profile", optional_argument, NULL, 'T' },
+	{ "custom-profile", optional_argument, NULL, 'C' },
 	{ "client",	 no_argument, NULL, 'c' },
 	{ "server", no_argument, NULL, 's' },
 	{ "help", no_argument, NULL, 'h' },
@@ -34,6 +36,8 @@ void usage()
 			"\t -s	server role\n\n"\
 			"\t [option..]:\n"\
 			"\t -H <bd-addr>   Heart rate Profile\n"\
+			"\t -T <bd-addr>   Time Profile\n"\
+			"\t -C <bd-addr>   Custom Profile\n"\
 			"\t -d	Debug enable\n"\
 			"\t -h 	Help Menu\n");
 }
@@ -52,7 +56,7 @@ int main(int argc, char *argv[])
 	g_io_channel_set_flags(key_io, G_IO_FLAG_NONBLOCK, NULL);
 
 	while ((opt = getopt_long(argc, argv,
-				"H:hcsd", main_options, NULL)) != -1) {
+				"H:T:C:hcsd", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'c':
 			if (role ==  GATT_ROLE_SERVER) {
@@ -88,6 +92,53 @@ int main(int argc, char *argv[])
 			} else {
 				//Heart-rate profile server
 				profile_selected = true;
+			}
+			break;
+		case 'T':
+			if (role ==  GATT_ROLE_INVALID) {
+				USR_PRT("<role> parameter is missing");
+				usage();
+				exit(0);
+			}else if(role == GATT_ROLE_CLIENT) {
+					time_client_initialize();
+					USR_PRT("Launching Time profile server test-suite");
+					memcpy(buf, optarg, sizeof(buf));
+					time_client_accept_input(buf);
+					g_io_add_watch(key_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							time_client_key_event_cb, NULL);
+					g_io_channel_unref(key_io);
+					profile_selected = true;
+					profile_signal_handler_cb = time_client_signal_handler;
+			} else {
+					time_server_initialize();
+					USR_PRT("Launching Time profile server test-suite");
+					memcpy(buf, optarg, sizeof(buf));
+					time_server_accept_input(buf);
+					g_io_add_watch(key_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							time_server_key_event_cb, NULL);
+					g_io_channel_unref(key_io);
+					profile_selected = true;
+					profile_signal_handler_cb = time_server_signal_handler;
+			}
+			break;
+		case 'C':
+			if (role ==  GATT_ROLE_INVALID) {
+				USR_PRT("<role> parameter is missing");
+				usage();
+				exit(0);
+			}else if(role == GATT_ROLE_CLIENT) {
+					//Custom profile client
+					profile_selected = true;
+			} else {
+					custom_server_initialize();
+					USR_PRT("Launching Custom profile test-suite");
+					memcpy(buf, optarg, sizeof(buf));
+					custom_server_accept_input(buf);
+					g_io_add_watch(key_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+							custom_server_key_event_cb, NULL);
+					g_io_channel_unref(key_io);
+					profile_selected = true;
+					profile_signal_handler_cb = custom_server_signal_handler;
 			}
 			break;
 		case 'd':

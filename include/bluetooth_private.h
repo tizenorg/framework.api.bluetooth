@@ -25,6 +25,7 @@
 #include <bluetooth-telephony-api.h>
 #include <bluetooth-media-control.h>
 #include <bluetooth-hid-api.h>
+#include <bluetooth-ipsp-api.h>
 
 #include "bluetooth.h"
 #include "bluetooth_internal.h"
@@ -59,6 +60,7 @@ typedef enum
 	BT_EVENT_BOND_CREATED, /**< A bond is created */
 	BT_EVENT_BOND_DESTROYED, /**< A bond is destroyed */
 	BT_EVENT_AUTHORIZATION_CHANGED, /**< Authorization is changed */
+	BT_EVENT_AUTHENTICATION_REQUEST, /**< Authentication events during pairing process*/
 	BT_EVENT_SERVICE_SEARCHED, /**< Service search finish */
 	BT_EVENT_DATA_RECEIVED, /**< Data is received */
 	BT_EVENT_CONNECTION_STATE_CHANGED, /**< Connection state is changed */
@@ -76,7 +78,6 @@ typedef enum
 	BT_EVENT_HDP_DISCONNECTED, /**< HDP disconnection change */
 	BT_EVENT_HDP_DATA_RECEIVED, /**< HDP Data receive Callabck */
 	BT_EVENT_AUDIO_CONNECTION_STATUS, /**< Audio Connection change callback */
-	BT_EVENT_A2DP_SOURCE_CONNECTION_STATUS, /**< A2dp Source Connection Change */
 	BT_EVENT_AG_SCO_CONNECTION_STATUS, /**< Audio - AG SCO Connection state change callback */
 	BT_EVENT_AG_CALL_HANDLING_EVENT, /**< Audio - AG call event callback */
 	BT_EVENT_AG_MULTI_CALL_HANDLING_EVENT, /**< Audio - AG 3-way call event callback */
@@ -93,6 +94,8 @@ typedef enum
 	BT_EVENT_AVRCP_SONG_POSITION_CHANGED, /**< AVRCP scan mode change callback */
 	BT_EVENT_AVRCP_TRACK_INFO_CHANGED, /**< AVRCP scan mode change callback */
 	BT_EVENT_HID_CONNECTION_STATUS, /**< HID connection status callback */
+	BT_EVENT_HID_DEVICE_CONNECTION_STATUS, /**< HID Device connection status callback */
+	BT_EVENT_HID_DEVICE_DATA_RECEIVED, /**< HID Device Data received callback */
 	BT_EVENT_DEVICE_CONNECTION_STATUS, /**< Device connection status callback */
 	BT_EVENT_GATT_CONNECTION_STATUS, /** < GATT connection status callback */
 	BT_EVENT_GATT_CLIENT_SERVICE_DISCOVERED, /** GATT services discovered callback */
@@ -109,6 +112,9 @@ typedef enum
 	BT_EVENT_GATT_CLIENT_READ_CHARACTERISTIC_LEGACY, /**< GATT characteristic value read callback */
 	BT_EVENT_GATT_CLIENT_WRITE_CHARACTERISTIC_LEGACY, /**< GATT characteristic value write callback */
 #endif
+	BT_EVENT_IPSP_INIT_STATE_CHANGED, /**< IPSP Init status changed callback */
+	BT_EVENT_IPSP_CONNECTION_STATUS, /**< IPSP connection status callback */
+	BT_EVENT_LE_DATA_LENGTH_CHANGED, /** LE data length changed callback */
 	BT_EVENT_ADVERTISING_STATE_CHANGED, /**< Advertising state changed callback */
 	BT_EVENT_MANUFACTURER_DATA_CHANGED, /**< Manufacturer data changed callback */
 	BT_EVENT_CONNECTABLE_CHANGED_EVENT, /**< Adapter connectable changed callback */
@@ -175,7 +181,8 @@ typedef enum {
 	BT_ADAPTER_LE_ADVERTISING_DATA_COMP_LIST_16_BIT_SERVICE_CLASS_UUIDS = 0x03, /**< Complete list of 16 bit UUIDs */
 	BT_ADAPTER_LE_ADVERTISING_DATA_INCOMP_LIST_128_BIT_SERVICE_CLASS_UUIDS = 0x06, /**< Incomplete list of 128 bit UUIDs */
 	BT_ADAPTER_LE_ADVERTISING_DATA_COMP_LIST_128_BIT_SERVICE_CLASS_UUIDS = 0x07, /**< Complete list of 128 bit UUID */
-	BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME = 0x09, /**<local device name */
+	BT_ADAPTER_LE_ADVERTISING_DATA_SHORT_LOCAL_NAME = 0x08, /**<Shortened local name */
+	BT_ADAPTER_LE_ADVERTISING_DATA_LOCAL_NAME = 0x09, /**<Complete local name */
 	BT_ADAPTER_LE_ADVERTISING_DATA_TX_POWER_LEVEL = 0x0a, /**< TX-Power level*/
 	BT_ADAPTER_LE_ADVERTISING_DATA_16_BIT_SERVICE_SOLICITATION_UUIDS = 0x14, /**< List of 16-bit Service Solicitation UUIDs*/
 	BT_ADAPTER_LE_ADVERTISING_DATA_128_BIT_SERVICE_SOLICITATION_UUIDS = 0x15, /**< List of 128-bit Service Solicitation UUIDs*/
@@ -292,6 +299,9 @@ typedef struct {
 	bt_gatt_server_read_value_requested_cb read_requested_cb;
 	void *read_requested_user_data;
 
+	bt_gatt_server_notification_state_change_cb notification_changed_cb;
+	void *notification_changed_user_data;
+
 	int value_length;
 	char *value;
 } bt_gatt_characteristic_s;
@@ -340,6 +350,17 @@ typedef void (*_bt_gatt_client_value_changed_cb)(char *char_path,
 #else
 #define BT_CHECK_BT_SUPPORT()
 #endif
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Enumerations of the authentication event types.
+ *
+ */
+typedef enum {
+	BT_AUTH_KEYBOARD_PASSKEY_DISPLAY = 0, /**< PIN display event to user for entering PIN in keyboard */
+	BT_AUTH_PIN_REQUEST,                  /**< Legacy PIN or PASSKEY request event */
+	BT_AUTH_PASSKEY_CONFIRM_REQUEST,      /**< PASSKEY confirmation event to match PASSKEY in remote device */
+} bt_authentication_type_info_e;
 
 /**
  * @internal
@@ -480,6 +501,251 @@ const GSList* _bt_gatt_get_client_list(void);
 const GSList* _bt_gatt_get_server_list(void);
 
 int _bt_gatt_client_update_all(bt_gatt_client_h client);
+
+/* HID device related type */
+typedef struct
+{
+        unsigned char btcode;
+        unsigned char rep_id;
+        unsigned char button;
+        signed char axis_x;
+        signed char axis_y;
+        signed char axis_z;
+} bt_hid_mouse_data_s;
+
+typedef struct
+{
+        unsigned char btcode;
+        unsigned char rep_id;
+        unsigned char modify;
+        unsigned char key[8];
+} bt_hid_key_data_s;
+
+typedef enum {
+        BT_HID_HEADER_HANDSHAKE,
+        BT_HID_HEADER_HID_CONTROL,
+        BT_HID_HEADER_GET_REPORT,
+        BT_HID_HEADER_SET_REPORT,
+        BT_HID_HEADER_GET_PROTOCOL,
+        BT_HID_HEADER_SET_PROTOCOL,
+        BT_HID_HEADER_DATA,
+        BT_HID_HEADER_UNKNOWN
+} bluetooth_hid_header_type_t;
+
+typedef enum {
+        BT_HID_PARAM_DATA_RTYPE_INPUT,
+        BT_HID_PARAM_DATA_RTYPE_OUTPUT
+} bluetooth_hid_param_type_t;
+
+typedef struct
+{
+        const char *address;
+        bluetooth_hid_header_type_t type;
+        bluetooth_hid_param_type_t param;
+        int data_size;  /**< The length of the received data */
+        const char *data;     /**< The received data */
+} bt_hid_device_received_data_s;
+
+typedef void (*bt_hid_device_connection_state_changed_cb) (int result,
+                bool connected, const char *remote_address, void *user_data);
+
+typedef void (*bt_hid_device_data_received_cb)(const bt_hid_device_received_data_s *data, void *user_data);
+/* HID device related type */
+
+/**
+ * @internal
+ * @brief IPSP Init state changed callback
+ */
+typedef void (*bt_le_ipsp_init_state_changed_cb)
+		(int result, bool ipsp_initialized, void *user_data);
+
+/**
+ * @internal
+ * @brief Initialize Bluetooth LE IPSP service and set the callback
+ */
+int _bt_le_ipsp_initialize(bt_le_ipsp_init_state_changed_cb callback, void *user_data);
+
+/**
+ * @internal
+ * @brief De-Initialize Bluetooth LE IPSP service and unset the callback
+ */
+int _bt_le_ipsp_deinitialize(void);
+
+/**
+ * @internal
+ * @brief Connect to a IPSP service over LE to remote device.
+ */
+int _bt_le_ipsp_connect(const char *address);
+
+/**
+ * @internal
+ * @brief Disconnect to a IPSP service over LE to remote device.
+ */
+int _bt_le_ipsp_disconnect(const char *address);
+
+/**
+* @internal
+* @brief Check whether IPSP service is initialized
+*/
+int _bt_le_ipsp_is_initialized(void);
+
+/**
+ * @internal
+ * @brief IPSP Connection state changed callback
+ */
+typedef void (*_bt_le_ipsp_connection_state_changed_cb)
+		(int result, bool connected, const char *remote_address, void *user_data);
+/**
+ * @internal
+ * @brief Set IPSP connection state event change callback.
+ */
+int _bt_le_ipsp_set_connection_state_changed_cb(_bt_le_ipsp_connection_state_changed_cb callback,
+						void *user_data);
+
+/**
+ * @internal
+ * @brief Unset IPSP connection state event change callback.
+ */
+int _bt_le_ipsp_unset_connection_state_changed_cb(void);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_LE_MODULE
+ * @brief Reads the maximum data length of LE packets supported by the controller.
+ * @since_tizen 3.0
+ *
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_SUPPORTED  Not supported
+ *
+ * @see bt_initialize
+ */
+int bt_adapter_le_read_maximum_data_length(
+		int *max_tx_octets, int *max_tx_time,
+		int *max_rx_octets, int *max_rx_time);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_LE_MODULE
+ * @brief Writes the Host suggested default data length of LE packets to the controller.
+ * @since_tizen 3.0
+ *
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_SUPPORTED  Not supported
+ *
+ * @see bt_initialize
+ */
+int bt_adapter_le_write_host_suggested_default_data_length(
+	const unsigned int def_tx_Octets,  const unsigned int def_tx_Time);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_LE_MODULE
+ * @brief Reads the Host suggested data length values of LE packets from the controller.
+ * @since_tizen 3.0
+ *
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_SUPPORTED  Not supported
+ *
+ * @see bt_initialize
+ */
+int bt_adapter_le_read_suggested_default_data_length(
+	unsigned int *def_tx_Octets,  unsigned int *def_tx_Time);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_LE_MODULE
+ * @brief Allows the host to suggest to controller, the data length parameters to be used
+ * for a given LE Connection.
+ * @since_tizen 3.0
+ *
+ * @retval #BT_ERROR_NONE  Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED  Not initialized
+ * @retval #BT_ERROR_NOT_SUPPORTED  Not supported
+ *
+ * @see bt_initialize
+ */
+int bt_device_le_set_data_length(const char *remote_address,
+	unsigned int max_tx_Octets,  unsigned int max_tx_Time);
+
+/**
+ * @internal
+ * @brief LE data length changed callback
+ */
+typedef void (*_bt_le_set_data_length_changed_cb)
+		(int result, const char *remote_address, int max_tx_octets,
+		int max_tx_time, int max_rx_octets, int max_rx_time, void *user_data);
+
+int bt_device_le_set_data_length_change_cb(
+	_bt_le_set_data_length_changed_cb callback, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Called when remote device requests authentication.
+ * @param[in] result
+ * @param[in] auth_type
+ *             typedef enum {
+ *              BT_AUTH_KEYBOARD_PASSKEY_DISPLAY = 0, : PIN display event to user for entering PIN in keyboard
+ *              BT_AUTH_PIN_REQUEST,                  : Legacy PIN or PASSKEY request event
+ *              BT_AUTH_PASSKEY_CONFIRM_REQUEST,      : PASSKEY confirmation event to match PASSKEY in remote device
+ *             } bt_authentication_type_info_e;
+ * @param[in] device_name  Name of the remote device
+ * @param[in] remote_addr  Remote BD address
+ * @param[in] pass_key     PASSKEY string
+ *            PASSKEY string is valid only if authentication types are following
+ *             a/ BT_AUTH_KEYBOARD_PASSKEY_DISPLAY
+ *             b/ BT_AUTH_PASSKEY_CONFIRM_REQUEST
+ *            pass_key string will be invalid if authentication event is of type BT_AUTH_PIN_REQUEST
+ *            as this event indicates that user MUST enter PIN or PASSKEY and perform authentication.
+ *
+ *            Upon receiving BT_AUTH_KEYBOARD_PASSKEY_DISPLAY event, user should enter PASSKEY in keyboard
+ *            Application can also call bt_device_cancel_bonding() Upon receiving BT_AUTH_KEYBOARD_PASSKEY_DISPLAY
+ *            event which will fail the on-going pairing with remote device.
+ * @param[in] user_data The user data passed from the callback registration function
+ * @see bt_adapter_set_authentication_req_cb()
+ */
+typedef void (*bt_adapter_authentication_req_cb)(int result, bt_authentication_type_info_e auth_type,
+						char *device_name, char *remote_addr,
+						char *pass_key, void *user_data);
+
+int bt_adapter_set_authentication_req_cb(bt_adapter_authentication_req_cb callback, void *user_data);
+
+/**
+ * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
+ * @brief Unregisters a callback function that will be invoked when remote device requests authentication.
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #BT_ERROR_NONE Successful
+ * @retval #BT_ERROR_NOT_INITIALIZED Not initialized
+ * @pre The Bluetooth service must be initialized by bt_initialize().
+ * @see bt_initialize()
+ * @see bt_adapter_set_authentication_req_cb()
+ */
+int bt_adapter_unset_authentication_req_cb(void);
+
+/**
+ * @ingroup  CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
+ * @brief  API to reply with PIN or PASSKEY with authentication type - TRUE or FALSE.
+ * @remarks  This function can be called by application when remote device requests PIN or PASSKEY from
+ *           local adapter.
+ * @param[in]  passkey  The passkey to be provided by application when remote devices requests for it.
+ * @param[in]  authentication_reply This indicates whether application wants to accept or cancel the on-going pairing
+ * @pre  This function can only be called when application receieves authentication event (BT_AUTH_PIN_REQUEST)
+ *       from remote device.
+ * @see  bt_adapter_set_authentication_req_cb()
+ */
+int bt_passkey_reply(char *passkey, bool authentication_reply);
+
+/**
+ * @ingroup  CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
+ * @brief  API to reply to the PASSKEY confirmation for on-going pairing with remote device.
+ * @remarks  This function can be called by application, when local adapter wants PASSKEY confirmation from user.
+ * @param[in]  confirmation_reply This indicates whether application wants to accepts or cancels the on-going pairing
+ *             confirmation_reply : TRUE will indicate that Application has confirmed the PASSKEY
+ *             confirmation_reply : FALSE will indicate that Application has failed to confirm the PASSKEY. In this situation
+ *             the pairing will be failed.
+ * @pre  This function can only be called when application receives authentication event (BT_AUTH_PASSKEY_CONFIRM_REQUEST)
+ *       from remote device.
+ * @see  bt_adapter_set_authentication_req_cb()
+ */
+int bt_passkey_confirmation_reply(bool confirmation_reply);
 
 #ifdef __cplusplus
 }

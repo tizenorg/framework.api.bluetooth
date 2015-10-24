@@ -25,6 +25,7 @@
 
 #include "bluetooth.h"
 #include "bluetooth_internal.h"
+#include "bluetooth_extension.h"
 #include "bluetooth_private.h"
 #include "bluetooth-media-control.h"
 #include "bluetooth-telephony-api.h"
@@ -524,6 +525,91 @@ static bt_gatt_server_read_value_requested_cb __bt_gatt_attribute_get_read_cb(
 	return NULL;
 }
 
+static bt_gatt_server_value_changed_cb __bt_gatt_attribute_get_value_change_cb(
+					bt_gatt_h service, bt_gatt_h attribute, void **user_data)
+{
+	gchar *svc_path = (gchar *)service;
+	gchar *att_path = (gchar *)attribute;
+	const GSList *gatt_server_list = NULL;
+	const GSList *l1, *l2, *l3, *l4;
+
+	gatt_server_list = _bt_gatt_get_server_list();
+
+	for (l1 = gatt_server_list; l1 != NULL; l1 = l1->next) {
+		bt_gatt_server_s *serv = l1->data;
+
+		if (!serv)
+			return NULL;
+
+		for (l2 = serv->services; l2 != NULL; l2 = l2->next) {
+			bt_gatt_service_s *svc = l2->data;
+
+			if (g_strcmp0(svc->path, svc_path) == 0) {
+				for (l3 = svc->characteristics; l3 != NULL; l3 = l3->next) {
+					bt_gatt_characteristic_s *chr = l3->data;
+
+					if (chr) {
+						if (g_strcmp0(chr->path, att_path) == 0) {
+							if (chr->server_value_changed_cb) {
+								*user_data = chr->server_value_changed_user_data;
+								return chr->server_value_changed_cb;
+							} else
+								return NULL;
+						} else {
+							for (l4 = chr->descriptors; l4 != NULL; l4 = l4->next) {
+								bt_gatt_descriptor_s *desc = l4->data;
+
+								if (desc && g_strcmp0(desc->path, att_path) == 0) {
+									/* TODO: Call value changed callback registerd for the descriptor */
+									return NULL;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+static bt_gatt_server_notification_state_change_cb __bt_gatt_attribute_get_notification_change_cb(
+					bt_gatt_h service, bt_gatt_h attribute, void **user_data)
+{
+	gchar *svc_path = (gchar *)service;
+	gchar *att_path = (gchar *)attribute;
+	const GSList *gatt_server_list = NULL;
+	const GSList *l1, *l2, *l3;
+
+	gatt_server_list = _bt_gatt_get_server_list();
+
+	for (l1 = gatt_server_list; l1 != NULL; l1 = l1->next) {
+		bt_gatt_server_s *serv = l1->data;
+
+		if (!serv)
+			return NULL;
+
+		for (l2 = serv->services; l2 != NULL; l2 = l2->next) {
+			bt_gatt_service_s *svc = l2->data;
+
+			if (g_strcmp0(svc->path, svc_path) == 0) {
+				for (l3 = svc->characteristics; l3 != NULL; l3 = l3->next) {
+					bt_gatt_characteristic_s *chr = l3->data;
+
+					if (chr && g_strcmp0(chr->path, att_path) == 0) {
+						if (chr->notification_changed_cb) {
+							*user_data = chr->notification_changed_user_data;
+							return chr->notification_changed_cb;
+						} else
+							return NULL;
+					}
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
 static void __bt_free_bt_device_connection_info_s(bt_device_connection_info_s *conn_info)
 {
 	if (conn_info == NULL)
@@ -596,6 +682,7 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 	int *adv_handle;
 	bluetooth_rfcomm_connection_t *connection_ind = NULL;
 	bluetooth_rfcomm_disconnection_t *disconnection_ind = NULL;
+	bluetooth_hid_request_t *hid_connection_status = NULL;
 	bt_socket_connection_s rfcomm_connection;
 	bt_device_sdp_info_s *sdp_info = NULL;
 	bt_device_connection_info_s *conn_info = NULL;
@@ -619,6 +706,8 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 	bt_hdp_data_ind_t *hdp_data_ind = NULL;
 	bt_gatt_char_value_t *char_val = NULL;
 	media_metadata_attributes_t *metadata = NULL;
+	bluetooth_authentication_request_info_t *auth_information = NULL;
+	bt_le_data_length_params_t  *data_length_info = NULL;
 
 	event_index = __bt_get_cb_index(event);
 
@@ -650,8 +739,9 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		device_addr = NULL;
 	}
 
-	if (event == BLUETOOTH_EVENT_GATT_SERVER_CHARACTERISTIC_VALUE_CHANGED ||
-		event == BLUETOOTH_EVENT_ADVERTISING_STARTED || event == BLUETOOTH_EVENT_ADVERTISING_STOPPED)
+	if (event == BLUETOOTH_EVENT_GATT_SERVER_VALUE_CHANGED || event == BLUETOOTH_EVENT_GATT_SERVER_NOTIFICATION_STATE_CHANGED ||
+		event == BLUETOOTH_EVENT_GATT_SERVER_READ_REQUESTED || event == BLUETOOTH_EVENT_ADVERTISING_STARTED ||
+		event == BLUETOOTH_EVENT_ADVERTISING_STOPPED)
 		BT_INFO("NOT use bt_event_slot_container");
 	else if (event_index == -1 || bt_event_slot_container[event_index].callback == NULL)
 		return;
@@ -728,6 +818,58 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		if (device_addr != NULL)
 			free(device_addr);
 		device_addr = NULL;
+		break;
+	case BLUETOOTH_EVENT_KEYBOARD_PASSKEY_DISPLAY:
+		BT_INFO("bt_adapter_authentication_req_cb() will be called with \
+			BLUETOOTH_EVENT_KEYBOARD_PASSKEY_DISPLAY");
+		auth_information = (bluetooth_authentication_request_info_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, &auth_information->device_address);
+		BT_DBG("BLUETOOTH_EVENT_KEYBOARD_PASSKEY_DISPLAY: name = %s address = %s passkey = %s", auth_information->device_name.name,
+			device_addr, auth_information->str_passkey);
+
+		((bt_adapter_authentication_req_cb)bt_event_slot_container[event_index].callback)
+			(_bt_get_error_code(param->result), BT_AUTH_KEYBOARD_PASSKEY_DISPLAY, auth_information->device_name.name,
+				device_addr, auth_information->str_passkey, bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_PIN_REQUEST:
+		BT_INFO("bt_adapter_authentication_req_cb() will be called with \
+				BLUETOOTH_EVENT_PIN_REQUEST");
+		auth_information = (bluetooth_authentication_request_info_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, &auth_information->device_address);
+
+		BT_DBG("BUETOOTH_EVENT_PIN_REQUEST: name = %s address = %s", auth_information->device_name,
+			device_addr);
+
+		((bt_adapter_authentication_req_cb)bt_event_slot_container[event_index].callback)
+			(_bt_get_error_code(param->result), BT_AUTH_PIN_REQUEST, auth_information->device_name.name, device_addr,
+				auth_information->str_passkey, bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_PASSKEY_REQUEST:
+		BT_INFO("bt_adapter_authentication_req_cb will be called with \
+				BLUETOOTH_EVENT_PASSKEY_REQUEST");
+
+		auth_information = (bluetooth_authentication_request_info_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, &auth_information->device_address);
+
+		BT_DBG("BLUETOOTH_EVENT_PASSKEY_REQUEST: name = %s address = %s", auth_information->device_name,
+			device_addr);
+
+		((bt_adapter_authentication_req_cb)bt_event_slot_container[event_index].callback)
+			(_bt_get_error_code(param->result), BT_AUTH_PIN_REQUEST, auth_information->device_name.name, device_addr,
+				auth_information->str_passkey, bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_PASSKEY_CONFIRM_REQUEST:
+		BT_INFO("bt_adapter_authentication_req_cb will be called with \
+			BLUETOOTH_EVENT_PASSKEY_CONFIRM_REQUEST");
+
+		auth_information = (bluetooth_authentication_request_info_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, &auth_information->device_address);
+
+		BT_DBG("BLUETOOTH_EVENT_PASSKEY_CONFIRM_REQUEST: name = %s address = %s passkey = %s ",
+				auth_information->device_name.name, device_addr, auth_information->str_passkey);
+		((bt_adapter_authentication_req_cb)bt_event_slot_container[event_index].callback)
+			(_bt_get_error_code(param->result), BT_AUTH_PASSKEY_CONFIRM_REQUEST, auth_information->device_name.name, device_addr,
+				auth_information->str_passkey, bt_event_slot_container[event_index].user_data);
 		break;
 	case BLUETOOTH_EVENT_DEVICE_AUTHORIZED:
 		BT_INFO("bt_device_authorization_changed_cb() will be called with BT_DEVICE_AUTHORIZED");
@@ -1147,7 +1289,7 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		bt_event_slot_container[event_index].user_data);
 		break;
 	case BLUETOOTH_EVENT_AV_DISCONNECTED:
-		BT_INFO("BLUETOOTH_EVENT_Av_DISCONNECTED ");
+		BT_INFO("BLUETOOTH_EVENT_AV_DISCONNECTED ");
 		device_addr = (char *)(param->param_data);
 		((bt_audio_connection_state_changed_cb)bt_event_slot_container[event_index].callback)
 		(_bt_get_error_code(param->result), FALSE, device_addr, BT_AUDIO_PROFILE_TYPE_A2DP,
@@ -1271,13 +1413,42 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		if (device_addr != NULL)
 			free(device_addr);
 		break;
-	case BLUETOOTH_EVENT_GATT_CONNECTED:
+	case BLUETOOTH_HID_DEVICE_CONNECTED:
+		BT_INFO("BLUETOOTH_HID_DEVICE_CONNECTED");
+		hid_connection_status = (bluetooth_hid_request_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr,
+						&(hid_connection_status->device_addr));
+		((bt_hid_device_connection_state_changed_cb)bt_event_slot_container[event_index].callback)
+		(_bt_get_error_code(param->result), TRUE, device_addr, bt_event_slot_container[event_index].user_data);
+
+		g_free(device_addr);
+		break;
+	case BLUETOOTH_HID_DEVICE_DISCONNECTED:
+		BT_INFO("BLUETOOTH_HID_DEVICE_DISCONNECTED");
+		hid_connection_status = (bluetooth_hid_request_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr,
+						&(hid_connection_status->device_addr));
+		((bt_hid_device_connection_state_changed_cb)bt_event_slot_container[event_index].callback)
+		(_bt_get_error_code(param->result), FALSE, device_addr, bt_event_slot_container[event_index].user_data);
+
+		g_free(device_addr);
+		break;
+	case BLUETOOTH_HID_DEVICE_DATA_RECEIVED:
+		BT_INFO("HID Device Data");
+		((bt_hid_device_data_received_cb)bt_event_slot_container[event_index].callback)
+		    ((bt_hid_device_received_data_s *)(param->param_data), bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_GATT_CONNECTED: {
 		BT_INFO("BLUETOOTH_EVENT_GATT_CONNECTED");
+		gboolean connected = TRUE;
 		bd_addr = (bluetooth_device_address_t *)(param->param_data);
 		_bt_convert_address_to_string(&device_addr, bd_addr);
+		if (_bt_get_error_code(param->result) != BT_ERROR_NONE)
+			connected = FALSE;
 		((bt_gatt_connection_state_changed_cb)bt_event_slot_container[event_index].callback)
-		(_bt_get_error_code(param->result), TRUE, device_addr,
-		 bt_event_slot_container[event_index].user_data);
+			(_bt_get_error_code(param->result), connected, device_addr,
+			 bt_event_slot_container[event_index].user_data);
+		}
 		break;
 	case BLUETOOTH_EVENT_GATT_DISCONNECTED:
 		BT_INFO("BLUETOOTH_EVENT_GATT_DISCONNECTED");
@@ -1422,17 +1593,61 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		bt_gatt_server_read_value_requested_cb cb;
 		void *user_data = NULL;
 		cb = __bt_gatt_attribute_get_read_cb(read_req->service_handle,
-						read_req->char_handle, &user_data);
+						read_req->att_handle, &user_data);
 
 		BT_INFO("BLUETOOTH_EVENT_GATT_SERVER_READ_REQUESTED");
-		if (cb == NULL)
+		if (cb == NULL) {
+			bluetooth_gatt_send_response(read_req->req_id,
+								BLUETOOTH_GATT_ATT_REQUEST_TYPE_READ,
+								BLUETOOTH_ERROR_INTERNAL, 0, NULL, 0);
 			return;
+		}
 
 		cb(read_req->address, read_req->req_id, read_req->service_handle,
-					read_req->char_handle, read_req->offset,
+					read_req->att_handle, read_req->offset,
 					user_data);
 		break;
 	}
+	case BLUETOOTH_EVENT_GATT_SERVER_VALUE_CHANGED: {
+		bt_gatt_value_change_t *value_change = param->param_data;
+		bt_gatt_server_value_changed_cb cb;
+		void *user_data = NULL;
+		cb = __bt_gatt_attribute_get_value_change_cb(value_change->service_handle,
+						value_change->att_handle, &user_data);
+
+		BT_INFO("BLUETOOTH_EVENT_GATT_SERVER_VALUE_CHANGE");
+		if (cb == NULL) {
+			bluetooth_gatt_send_response(value_change->req_id,
+								BLUETOOTH_GATT_ATT_REQUEST_TYPE_WRITE,
+								BLUETOOTH_ERROR_INTERNAL, 0, NULL, 0);
+			return;
+		}
+
+		bluetooth_gatt_send_response(value_change->req_id,
+							BLUETOOTH_GATT_ATT_REQUEST_TYPE_WRITE,
+							BLUETOOTH_ERROR_NONE, 0, NULL, 0);
+
+		cb(value_change->address, value_change->service_handle,
+					value_change->att_handle, value_change->offset,
+					(char *)value_change->att_value, value_change->val_len, user_data);
+		break;
+	}
+	case BLUETOOTH_EVENT_GATT_SERVER_NOTIFICATION_STATE_CHANGED: {
+		bt_gatt_char_notify_change_t *value_change = param->param_data;
+		bt_gatt_server_notification_state_change_cb cb;
+		void *user_data = NULL;
+		cb = __bt_gatt_attribute_get_notification_change_cb(value_change->service_handle,
+						value_change->att_handle, &user_data);
+
+		BT_INFO("BLUETOOTH_EVENT_GATT_SERVER_NOTIFICATION_STATE_CHANGED");
+		if (cb == NULL)
+			return;
+
+		cb(value_change->att_notify, value_change->service_handle,
+				value_change->att_handle, user_data);
+		break;
+	}
+
 #ifdef BT_ENABLE_LEGACY_GATT_CLIENT
 	case BLUETOOTH_EVENT_GATT_SVC_CHAR_DESC_DISCOVERED: {
 		BT_INFO("BLUETOOTH_EVENT_GATT_SVC_CHAR_DESC_DISCOVERED");
@@ -1521,6 +1736,35 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		 (param->param_data, param->result,
 		  bt_event_slot_container[event_index].user_data);
 
+		break;
+	case BLUETOOTH_EVENT_IPSP_CONNECTED:
+		BT_INFO("BLUETOOTH_EVENT_IPSP_CONNECTED");
+		bd_addr = (bluetooth_device_address_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, bd_addr);
+		((_bt_le_ipsp_connection_state_changed_cb)bt_event_slot_container[event_index].callback)
+		(_bt_get_error_code(param->result), TRUE, device_addr,
+		 bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_IPSP_DISCONNECTED:
+		BT_INFO("BLUETOOTH_EVENT_IPSP_DISCONNECTED");
+		bd_addr = (bluetooth_device_address_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, bd_addr);
+		((_bt_le_ipsp_connection_state_changed_cb)bt_event_slot_container[event_index].callback)
+		(_bt_get_error_code(param->result), FALSE, device_addr,
+		 bt_event_slot_container[event_index].user_data);
+		break;
+	case BLUETOOTH_EVENT_LE_DATA_LENGTH_CHANGED:
+		BT_INFO("__bt_le_set_data_length_changed_cb() will be called");
+		data_length_info = (bt_le_data_length_params_t *)(param->param_data);
+		_bt_convert_address_to_string(&device_addr, &data_length_info->device_address);
+
+		((_bt_le_set_data_length_changed_cb)bt_event_slot_container[event_index].callback)
+		(_bt_get_error_code(param->result), device_addr, data_length_info->max_tx_octets,
+		data_length_info->max_tx_time, data_length_info->max_rx_octets, data_length_info->max_rx_time,
+		bt_event_slot_container[event_index].user_data);
+
+		if (device_addr != NULL)
+			free(device_addr);
 		break;
 #ifdef TIZEN_WEARABLE
 	case BLUETOOTH_PBAP_CONNECTED: {
@@ -1740,6 +1984,13 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 		break;
 	}
 #endif
+	case BLUETOOTH_EVENT_IPSP_INIT_STATE_CHANGED: {
+		BT_DBG("BLUETOOTH_EVENT_IPSP_INIT_STATE_CHANGED");
+		((bt_le_ipsp_init_state_changed_cb)bt_event_slot_container[event_index].callback)
+			(_bt_get_error_code(param->result), *(bool *)(param->param_data),
+			bt_event_slot_container[event_index].user_data);
+		break;
+	}
 	default:
 		break;
 	}
@@ -2062,6 +2313,11 @@ static int __bt_get_cb_index(int event)
 		return BT_EVENT_BOND_CREATED;
 	case BLUETOOTH_EVENT_BONDED_DEVICE_REMOVED:
 		return BT_EVENT_BOND_DESTROYED;
+	case BLUETOOTH_EVENT_KEYBOARD_PASSKEY_DISPLAY:
+	case BLUETOOTH_EVENT_PASSKEY_REQUEST:
+	case BLUETOOTH_EVENT_PIN_REQUEST:
+	case BLUETOOTH_EVENT_PASSKEY_CONFIRM_REQUEST:
+		return BT_EVENT_AUTHENTICATION_REQUEST;
 	case BLUETOOTH_EVENT_DEVICE_AUTHORIZED:
 	case BLUETOOTH_EVENT_DEVICE_UNAUTHORIZED:
 		return BT_EVENT_AUTHORIZATION_CHANGED;
@@ -2144,8 +2400,9 @@ static int __bt_get_cb_index(int event)
 	case BLUETOOTH_EVENT_AV_DISCONNECTED:
 		return BT_EVENT_AUDIO_CONNECTION_STATUS;
 	case BLUETOOTH_EVENT_AV_SOURCE_CONNECTED:
+		return BT_EVENT_AUDIO_CONNECTION_STATUS;
 	case BLUETOOTH_EVENT_AV_SOURCE_DISCONNECTED:
-		return BT_EVENT_A2DP_SOURCE_CONNECTION_STATUS;
+		return BT_EVENT_AUDIO_CONNECTION_STATUS;
 	case  BLUETOOTH_EVENT_AVRCP_CONNECTED:
 	case  BLUETOOTH_EVENT_AVRCP_DISCONNECTED:
 	case  BLUETOOTH_EVENT_AVRCP_CONTROL_CONNECTED:
@@ -2173,6 +2430,12 @@ static int __bt_get_cb_index(int event)
 		return  BT_EVENT_HID_CONNECTION_STATUS;
 	case BLUETOOTH_HID_DISCONNECTED:
 		return  BT_EVENT_HID_CONNECTION_STATUS;
+	case BLUETOOTH_HID_DEVICE_CONNECTED:
+		return BT_EVENT_HID_DEVICE_CONNECTION_STATUS;
+	case BLUETOOTH_HID_DEVICE_DISCONNECTED:
+		return BT_EVENT_HID_DEVICE_CONNECTION_STATUS;
+	case BLUETOOTH_HID_DEVICE_DATA_RECEIVED:
+		return BT_EVENT_HID_DEVICE_DATA_RECEIVED;
 #ifdef BT_ENABLE_LEGACY_GATT_CLIENT
 	case BLUETOOTH_EVENT_GATT_SVC_CHAR_DISCOVERED:
 		return BT_EVENT_GATT_CLIENT_CHARACTERISTIC_DISCOVERED_LEGACY;
@@ -2194,8 +2457,6 @@ static int __bt_get_cb_index(int event)
 		return BT_EVENT_GATT_CLIENT_READ_DESCRIPTOR;
 	case BLUETOOTH_EVENT_GATT_WRITE_DESC:
 		return BT_EVENT_GATT_CLIENT_WRITE_DESCRIPTOR;
-	case BLUETOOTH_EVENT_GATT_SERVER_READ_REQUESTED:
-		return BT_EVENT_GATT_SERVER_READ_REQUESTED;
 	case BLUETOOTH_EVENT_ADVERTISING_STARTED:
 	case BLUETOOTH_EVENT_ADVERTISING_STOPPED:
 		return BT_EVENT_ADVERTISING_STATE_CHANGED;
@@ -2203,6 +2464,11 @@ static int __bt_get_cb_index(int event)
 		return BT_EVENT_MANUFACTURER_DATA_CHANGED;
 	case BLUETOOTH_EVENT_CONNECTABLE_CHANGED:
 		return BT_EVENT_CONNECTABLE_CHANGED_EVENT;
+	case BLUETOOTH_EVENT_IPSP_CONNECTED:
+	case BLUETOOTH_EVENT_IPSP_DISCONNECTED:
+		return BT_EVENT_IPSP_CONNECTION_STATUS;
+	case BLUETOOTH_EVENT_LE_DATA_LENGTH_CHANGED:
+		return BT_EVENT_LE_DATA_LENGTH_CHANGED;
 #ifdef TIZEN_WEARABLE
 	case BLUETOOTH_PBAP_CONNECTED:
 		return BT_EVENT_PBAP_CONNECTION_STATUS;
@@ -2240,6 +2506,8 @@ static int __bt_get_cb_index(int event)
 	case BLUETOOTH_EVENT_HF_CALL_STATUS:
 		return BT_EVENT_HF_CALL_STATUS_UPDATED_EVENT;
 #endif
+	case BLUETOOTH_EVENT_IPSP_INIT_STATE_CHANGED:
+		return  BT_EVENT_IPSP_INIT_STATE_CHANGED;
 	default:
 		return -1;
 	}

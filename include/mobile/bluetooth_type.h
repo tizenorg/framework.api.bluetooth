@@ -75,18 +75,6 @@ typedef enum
 } bt_adapter_state_e;
 
 /**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_LE_MODULE
- * @brief  Enumerations of the Bluetooth adapter le state.
- * @since_tizen 2.3
- */
-typedef enum
-{
-	BT_ADAPTER_LE_DISABLED = 0x00, /**< Bluetooth le is disabled */
-	BT_ADAPTER_LE_ENABLED, /**< Bluetooth le is enabled */
-} bt_adapter_le_state_e;
-
-/**
  * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
  * @brief Enumerations of the Bluetooth visibility mode.
  * @since_tizen 2.3
@@ -242,13 +230,14 @@ typedef enum
 typedef enum
 {
     BT_PROFILE_RFCOMM = 0x01, /**< RFCOMM Profile */
-    BT_PROFILE_A2DP = 0x02, /**< Advanced Audio Distribution Profile */
+    BT_PROFILE_A2DP = 0x02, /**< Advanced Audio Distribution Profile Source role */
     BT_PROFILE_HSP = 0x04, /**< Headset Profile */
     BT_PROFILE_HID = 0x08, /**< Human Interface Device Profile */
     BT_PROFILE_NAP = 0x10, /**< Network Access Point Profile */
     BT_PROFILE_AG = 0x20, /**< Audio Gateway Profile */
     BT_PROFILE_GATT = 0x40, /**< Generic Attribute Profile */
     BT_PROFILE_NAP_SERVER = 0x80, /**< NAP server Profile */
+    BT_PROFILE_A2DP_SINK = 0x100, /**< Advanced Audio Distribution Profile Sink role */
 } bt_profile_e;
 
 /**
@@ -479,7 +468,6 @@ typedef enum {
 } bt_audio_profile_type_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
  * @brief  Enumerations for the call handling event
  * @since_tizen 2.3
@@ -491,7 +479,6 @@ typedef enum {
 } bt_ag_call_handling_event_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
  * @brief  Enumerations for the multi call handling event
  * @since_tizen 2.3
@@ -505,42 +492,9 @@ typedef enum {
 } bt_ag_multi_call_handling_event_e;
 
 /**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
- * @brief  Enumerations for the call state
- * @since_tizen 2.3
- */
-typedef enum {
-    BT_AG_CALL_EVENT_IDLE = 0x00,  /**< Idle */
-    BT_AG_CALL_EVENT_ANSWERED,  /**< Answered */
-    BT_AG_CALL_EVENT_HELD,  /**< Held */
-    BT_AG_CALL_EVENT_RETRIEVED,  /**< Retrieved */
-    BT_AG_CALL_EVENT_DIALING,  /**< Dialing */
-    BT_AG_CALL_EVENT_ALERTING,  /**< Alerting */
-    BT_AG_CALL_EVENT_INCOMING,  /**< Incoming */
-} bt_ag_call_event_e;
-
-/**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
- * @brief  Enumerations for the call state
- * @since_tizen 2.3
- */
-typedef enum {
-    BT_AG_CALL_STATE_IDLE = 0x00,  /**< Idle state */
-    BT_AG_CALL_STATE_ACTIVE,  /**< Active state */
-    BT_AG_CALL_STATE_HELD,  /**< Held state */
-    BT_AG_CALL_STATE_DIALING,  /**< Dialing state */
-    BT_AG_CALL_STATE_ALERTING,  /**< Alerting state */
-    BT_AG_CALL_STATE_INCOMING,  /**< Incoming state */
-    BT_AG_CALL_STATE_WAITING,  /**< Waiting for connected indication event after answering an incoming call*/
-} bt_ag_call_state_e;
-
-/**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Enumerations for the equalizer state
- * @since_tizen 2.3
+ * @since_tizen 2.4
  */
 typedef enum {
     BT_AVRCP_EQUALIZER_STATE_OFF = 0x01,  /**< Equalizer Off */
@@ -548,10 +502,9 @@ typedef enum {
 } bt_avrcp_equalizer_state_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Enumerations for the repeat mode
- * @since_tizen 2.3
+ * @since_tizen 2.4
  */
 typedef enum {
     BT_AVRCP_REPEAT_MODE_OFF = 0x01,  /**< Repeat Off */
@@ -561,10 +514,9 @@ typedef enum {
 } bt_avrcp_repeat_mode_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Enumerations for the shuffle mode
- * @since_tizen 2.3
+ * @since_tizen 2.4
  */
 typedef enum {
     BT_AVRCP_SHUFFLE_MODE_OFF = 0x01,  /**< Shuffle Off */
@@ -573,10 +525,9 @@ typedef enum {
 } bt_avrcp_shuffle_mode_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Enumerations for the scan mode
- * @since_tizen 2.3
+ * @since_tizen 2.4
  */
 typedef enum {
     BT_AVRCP_SCAN_MODE_OFF = 0x01,  /**< Scan Off */
@@ -585,10 +536,9 @@ typedef enum {
 } bt_avrcp_scan_mode_e;
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Enumerations for the player state
- * @since_tizen 2.3
+ * @since_tizen 2.4
  */
 typedef enum {
     BT_AVRCP_PLAYER_STATE_STOPPED = 0x00,  /**< Stopped */
@@ -888,22 +838,6 @@ typedef struct
 } bt_device_connection_info_s;
 
 /**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
- * @brief Device LE connection update structure.
- * @since_tizen 2.3
- *
- * @see bt_device_le_conn_update()
- */
-typedef struct
-{
-       unsigned int interval_min;   /**< Minimum value for the connection event interval (msec) */
-       unsigned int interval_max;   /**< Maximum value for the connection event interval (msec) */
-       unsigned int latency;   /**< Slave latency (msec) */
-       unsigned int time_out;   /**< Supervision timeout (msec) */
-} bt_le_conn_update_s;
-
-/**
  * @ingroup CAPI_NETWORK_BLUETOOTH_SOCKET_MODULE
  * @brief Rfcomm connection data used for exchanging data between Bluetooth devices.
  * @since_tizen 2.3
@@ -1040,26 +974,6 @@ typedef void (*bt_adapter_device_discovery_state_changed_cb)
 typedef bool (*bt_adapter_bonded_device_cb)(bt_device_info_s *device_info, void *user_data);
 
 /**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_MODULE
- * @brief  Called when the connectable state changes.
- * @since_tizen 2.3
- *
- * @param[in] result The result of the connectable state changing
- * @param[in] connectable The connectable to be changed
- * @param[in] user_data The user data passed from the callback registration function
- *
- * @pre This function will be invoked when the connectable state of local Bluetooth adapter changes
- * if you register this callback using bt_adapter_set_connectable_changed_cb().
- *
- * @see bt_adapter_set_connectable()
- * @see bt_adapter_set_connectable_changed_cb()
- * @see bt_adapter_unset_connectable_changed_cb()
- */
-typedef void (*bt_adapter_connectable_changed_cb)
-	(int result, bool connectable, void *user_data);
-
-/**
  * @deprecated Deprecated since 2.3.1
  * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_LE_MODULE
  * @brief  Called when the state of LE device discovery changes.
@@ -1119,23 +1033,6 @@ typedef void (*bt_adapter_le_advertising_state_changed_cb)(int result,
 		bt_advertiser_h advertiser, bt_adapter_le_advertising_state_e adv_state, void *user_data);
 
 /**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_ADAPTER_LE_MODULE
- * @brief  Called when the Bluetooth adapter le state changes.
- * @since_tizen 2.3
- *
- * @param[in]   result  The result of the adapter state changing
- * @param[in]   adapter_le_state  The adapter le state to be changed
- * @param[in]   user_data  The user data passed from the callback registration function
- * @pre Either bt_adapter_le_enable() or bt_adapter_le_disable() will invoke this callback if you register this callback using bt_adapter_le_set_state_changed_cb().
- * @see bt_adapter_le_enable()
- * @see bt_adapter_le_disable()
- * @see bt_adapter_le_set_state_changed_cb()
- * @see bt_adapter_le_unset_state_changed_cb()
- */
-typedef void (*bt_adapter_le_state_changed_cb)(int result, bt_adapter_le_state_e adapter_le_state, void *user_data);
-
-/**
  * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
  * @brief Called when the process of creating bond finishes.
  * @since_tizen 2.3
@@ -1192,7 +1089,6 @@ typedef bool (*bt_device_connected_profile)(bt_profile_e profile, void *user_dat
 typedef void (*bt_device_bond_destroyed_cb)(int result, char *remote_address, void *user_data);
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_DEVICE_MODULE
  * @brief  Called when the authorization of device changes.
  * @since_tizen 2.3
@@ -1279,40 +1175,19 @@ typedef void (*bt_socket_connection_state_changed_cb)
 	(int result, bt_socket_connection_state_e connection_state, bt_socket_connection_s *connection, void *user_data);
 
 /**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_SOCKET_MODULE
  * @brief  Called when a RFCOMM connection is requested.
  * @since_tizen 2.3
  *
- * @details You must call bt_socket_accept() if you want to accept. Otherwise, you must call bt_socket_reject().
  * @param[in] socket_fd  The file descriptor of socket on which a connection is requested
  * @param[in] remote_address  The address of remote device
  * @param[in] user_data The user data passed from the callback registration function
- * @pre If you register this callback function by bt_socket_set_connection_requested_cb() and listen a socket by bt_socket_listen(),
+ * @pre If you register this callback function by bt_socket_set_connection_requested_cb(),
  * bt_socket_connection_requested_cb() will be invoked.
- * @see bt_socket_listen()
- * @see bt_socket_accept()
- * @see bt_socket_reject()
  */
 typedef void (*bt_socket_connection_requested_cb) (int socket_fd, const char *remote_address, void *user_data);
 
 /**
- * @internal
- * @ingroup CAPI_NETWORK_BLUETOOTH_OPP_SERVER_MODULE
- * @brief  Called when the push is requested.
- * @since_tizen 2.3
- *
- * @details You must call bt_opp_server_accept() if you want to accept.
- * Otherwise, you must call bt_opp_server_reject().
- * @param[in] file  The path of file to be pushed
- * @param[in] size The file size (bytes)
- * @param[in] user_data The user data passed from the callback registration function
- * @see bt_opp_server_initialize()
- */
-typedef void (*bt_opp_server_push_requested_cb)(const char *file, int size, void *user_data);
-
-/**
- * @internal
  * @ingroup CAPI_NETWORK_BLUETOOTH_OPP_SERVER_MODULE
  * @brief  Called when an OPP connection is requested.
  * @since_tizen 2.3
@@ -1409,23 +1284,6 @@ typedef void (*bt_opp_client_push_finished_cb)(int result, const char *remote_ad
  * @see bt_audio_unset_connection_state_changed_cb()
  */
 typedef void (*bt_audio_connection_state_changed_cb) (int result, bool connected, const char *remote_address, bt_audio_profile_type_e type, void *user_data);
-
-/**
- * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
- * @brief  Called when the SCO(Synchronous Connection Oriented link) state is changed.
- * @since_tizen 2.3
- *
- * @details  This callback is called when the SCO state is changed.
- * When you call bt_ag_open_sco() or bt_ag_close_sco(), this callback is also called with error result even though these functions failed.
- * @param[in] result  The result of changing the connection state
- * @param[in] opened  The state to be changed: (@c true = opened, @c  false = not opened)
- * @param[in] user_data The user data passed from the callback registration function
- * @see bt_ag_set_sco_state_changed_cb()
- * @see bt_ag_unset_sco_state_changed_cb()
- * @see bt_ag_open_sco()
- * @see bt_ag_close_sco()
- */
-typedef void (*bt_ag_sco_state_changed_cb) (int result, bool opened, void *user_data);
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_AUDIO_AG_MODULE
