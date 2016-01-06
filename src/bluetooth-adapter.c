@@ -1422,7 +1422,10 @@ static int __bt_convert_string_to_uuid(const char *string, char **uuid, int *bit
 		ret = sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
 					&val0, &val1, &val2, &val3, &val4, &val5);
 		if (ret != 6)
+		{
+			g_free(data);
 			return BT_ERROR_OPERATION_FAILED;
+		}
 
 		val0 = htonl(val0);
 		val1 = htons(val1);
