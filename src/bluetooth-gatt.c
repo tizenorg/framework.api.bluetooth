@@ -1021,7 +1021,7 @@ int bt_gatt_set_value(bt_gatt_h gatt_handle, const char *value, int value_length
 	}
 
 	if (handle->role == BT_GATT_ROLE_SERVER && handle->path) {
-		ret = _bt_get_error_code(bluetooth_gatt_update_characteristic(handle->path, value, value_length));
+		ret = _bt_get_error_code(bluetooth_gatt_notify_characteristics_value_change(handle->path, value, value_length, NULL));
 		if (ret != BT_ERROR_NONE) {
 			BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
 			return ret;
@@ -1131,7 +1131,7 @@ int bt_gatt_set_int_value(bt_gatt_h gatt_handle, bt_data_type_int_e type, int va
 	}
 
 	if (handle->role == BT_GATT_ROLE_SERVER && handle->path) {
-		ret = _bt_get_error_code(bluetooth_gatt_update_characteristic(handle->path, *val, *val_len));
+		ret = _bt_get_error_code(bluetooth_gatt_notify_characteristics_value_change(handle->path, *val, *val_len, NULL));
 		if (ret != BT_ERROR_NONE) {
 			BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
 			return ret;
@@ -1236,7 +1236,7 @@ int bt_gatt_set_float_value(bt_gatt_h gatt_handle, bt_data_type_float_e type,
 	}
 
 	if (handle->role == BT_GATT_ROLE_SERVER && handle->path) {
-		ret = _bt_get_error_code(bluetooth_gatt_update_characteristic(handle->path, *val, *val_len));
+		ret = _bt_get_error_code(bluetooth_gatt_notify_characteristics_value_change(handle->path, *val, *val_len, NULL));
 		if (ret != BT_ERROR_NONE) {
 			BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
 			return ret;
@@ -2112,42 +2112,12 @@ int bt_gatt_server_send_response(int request_id,
 }
 
 int bt_gatt_server_notify(bt_gatt_h characteristic, bool need_confirm,
-				bt_gatt_server_notification_sent_cb callback,
-				const char *device_address, void *user_data)
+		bt_gatt_server_notification_sent_cb callback, void *user_data)
 {
-	bt_gatt_characteristic_s *chr = (bt_gatt_characteristic_s*)characteristic;
-	bt_gatt_common_s *handle = (bt_gatt_common_s*)characteristic;
-	bluetooth_device_address_t addr_hex = { {0,} };
-	int ret = BT_ERROR_NONE;
-
 	BT_CHECK_INIT_STATUS();
 	BT_CHECK_GATT_SERVER_INIT_STATUS();
-	BT_CHECK_INPUT_PARAMETER(characteristic);
-	BT_CHECK_INPUT_PARAMETER(callback);
 
-	_bt_convert_address_to_hex(&addr_hex, device_address);
-
-	if (chr->value_length > 0 && chr->value) {
-		if (handle->role == BT_GATT_ROLE_SERVER && handle->path) {
-			ret = bluetooth_gatt_server_set_notification(handle->path, &addr_hex);
-			if (ret != BT_ERROR_NONE) {
-				BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
-				return ret;
-			}
-			ret = _bt_get_error_code(bluetooth_gatt_update_characteristic(handle->path, chr->value, chr->value_length));
-			if (ret != BT_ERROR_NONE) {
-				BT_ERR("%s(0x%08x)", _bt_convert_error_to_string(ret), ret);
-				return ret;
-			}
-		}
-	}
-
-	if (need_confirm) {
-		chr->indication_confirm_cb = callback;
-		chr->indication_confirm_user_data = user_data;
-	}
-
-	return ret;
+	return BT_ERROR_NONE;
 }
 
 int bt_gatt_server_set_value_changed_cb(bt_gatt_h characteristic,

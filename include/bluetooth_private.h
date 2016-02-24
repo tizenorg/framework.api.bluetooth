@@ -299,9 +299,6 @@ typedef struct {
 	bt_gatt_server_read_value_requested_cb read_requested_cb;
 	void *read_requested_user_data;
 
-	bt_gatt_server_notification_sent_cb indication_confirm_cb;
-	void *indication_confirm_user_data;
-
 	bt_gatt_server_notification_state_change_cb notification_changed_cb;
 	void *notification_changed_user_data;
 

@@ -2683,8 +2683,8 @@ int bt_avrcp_target_deinitialize(void);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the equalize state to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] state The state of equalizer
  * @return   0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
@@ -2706,8 +2706,8 @@ int bt_avrcp_target_notify_equalizer_state(bt_avrcp_equalizer_state_e state);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the repeat mode to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] mode The repeat mode
  * @return   0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
@@ -2729,8 +2729,8 @@ int bt_avrcp_target_notify_repeat_mode(bt_avrcp_repeat_mode_e mode);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the shuffle mode to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] mode The repeat mode
  * @return   0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
@@ -2752,8 +2752,8 @@ int bt_avrcp_target_notify_shuffle_mode(bt_avrcp_shuffle_mode_e mode);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the scan mode to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] mode The scan mode
  * @return   0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
@@ -2775,8 +2775,8 @@ int bt_avrcp_target_notify_scan_mode(bt_avrcp_scan_mode_e mode);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the player state to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] state The player state
  * @return   0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
@@ -2798,8 +2798,8 @@ int bt_avrcp_target_notify_player_state(bt_avrcp_player_state_e state);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the current position of song to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] position The current position in milliseconds
  * @return  0 on success, otherwise a negative error value.
  * @retval #BT_ERROR_NONE  Successful
@@ -2821,8 +2821,8 @@ int bt_avrcp_target_notify_position(unsigned int position);
  * @ingroup CAPI_NETWORK_BLUETOOTH_AVRCP_MODULE
  * @brief  Notifies the track to the remote device.
  * @since_tizen 2.4
- * @privlevel public
- * @privilege %http://tizen.org/privilege/bluetooth
+ * @privlevel platform
+ * @privilege %http://tizen.org/privilege/bluetooth.admin
  * @param[in] title The title of track
  * @param[in] artist The artist of track
  * @param[in] album The album of track

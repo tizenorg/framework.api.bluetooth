@@ -610,43 +610,6 @@ static bt_gatt_server_notification_state_change_cb __bt_gatt_attribute_get_notif
 	return NULL;
 }
 
-static bt_gatt_server_notification_sent_cb __bt_gatt_attribute_get_indication_confrim_cb(
-					bt_gatt_h service, bt_gatt_h attribute, void **user_data)
-{
-	gchar *svc_path = (gchar *)service;
-	gchar *att_path = (gchar *)attribute;
-	const GSList *gatt_server_list = NULL;
-	const GSList *l1, *l2, *l3;
-
-	gatt_server_list = _bt_gatt_get_server_list();
-
-	for (l1 = gatt_server_list; l1 != NULL; l1 = l1->next) {
-		bt_gatt_server_s *serv = l1->data;
-
-		if (!serv)
-			return NULL;
-
-		for (l2 = serv->services; l2 != NULL; l2 = l2->next) {
-			bt_gatt_service_s *svc = l2->data;
-
-			if (g_strcmp0(svc->path, svc_path) == 0) {
-				for (l3 = svc->characteristics; l3 != NULL; l3 = l3->next) {
-					bt_gatt_characteristic_s *chr = l3->data;
-
-					if (chr && g_strcmp0(chr->path, att_path) == 0) {
-						if (chr->indication_confirm_cb) {
-							*user_data = chr->indication_confirm_user_data;
-							return chr->indication_confirm_cb;
-						} else
-							return NULL;
-					}
-				}
-			}
-		}
-	}
-	return NULL;
-}
-
 static void __bt_free_bt_device_connection_info_s(bt_device_connection_info_s *conn_info)
 {
 	if (conn_info == NULL)
@@ -778,7 +741,7 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 
 	if (event == BLUETOOTH_EVENT_GATT_SERVER_VALUE_CHANGED || event == BLUETOOTH_EVENT_GATT_SERVER_NOTIFICATION_STATE_CHANGED ||
 		event == BLUETOOTH_EVENT_GATT_SERVER_READ_REQUESTED || event == BLUETOOTH_EVENT_ADVERTISING_STARTED ||
-		event == BLUETOOTH_EVENT_GATT_SERVER_INDICATE_CONFIRMED || event == BLUETOOTH_EVENT_ADVERTISING_STOPPED)
+		event == BLUETOOTH_EVENT_ADVERTISING_STOPPED)
 		BT_INFO("NOT use bt_event_slot_container");
 	else if (event_index == -1 || bt_event_slot_container[event_index].callback == NULL)
 		return;
@@ -1684,23 +1647,7 @@ static void __bt_event_proxy(int event, bluetooth_event_param_t *param, void *us
 				value_change->att_handle, user_data);
 		break;
 	}
-	case BLUETOOTH_EVENT_GATT_SERVER_INDICATE_CONFIRMED: {
-		bt_gatt_indicate_confirm_t *confrim_status = param->param_data;
-		bt_gatt_server_notification_sent_cb cb;
-		void *user_data = NULL;
-		cb = __bt_gatt_attribute_get_indication_confrim_cb(confrim_status->service_handle,
-						confrim_status->att_handle, &user_data);
 
-		BT_INFO("BLUETOOTH_EVENT_GATT_SERVER_INDICATE_CONFIRMED");
-		if (cb == NULL)
-			return;
-
-		cb(_bt_get_error_code(param->result), confrim_status->address,
-				confrim_status->service_handle,
-				confrim_status->att_handle, confrim_status->complete, user_data);
-
-		break;
-	}
 #ifdef BT_ENABLE_LEGACY_GATT_CLIENT
 	case BLUETOOTH_EVENT_GATT_SVC_CHAR_DESC_DISCOVERED: {
 		BT_INFO("BLUETOOTH_EVENT_GATT_SVC_CHAR_DESC_DISCOVERED");

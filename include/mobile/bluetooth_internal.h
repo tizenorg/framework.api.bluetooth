@@ -2157,13 +2157,12 @@ int bt_gatt_server_send_response(int request_id,
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_GATT_MODULE
- * @brief  Notifies value change of the characteristic to the remote devices which enable a Client Characteristic Configuration Descriptor
+ * @brief  Notifys a value change of the characteristic to the remote devices which enable a Client Characteristic Configuration Descriptor
  * @since_tizen 2.4
  *
  * @param[in] characteristic The characteristic which has a changed value
  * @param[in] need_confirm If it is true, an indication is sent. If it is false, a notification is sent.
  * @param[in] callback The function to be invoked on each remote device when a sending operation is done
- * @param[in] device_address Remote device address to send notify or indicate and if set to NULL then notify/indicate all is enabled.
  * @param[in] user_data The user data to be passed to @a callback function
  * @return  0 on success, otherwise a negative error value
  * @retval #BT_ERROR_NONE Successful
@@ -2173,8 +2172,7 @@ int bt_gatt_server_send_response(int request_id,
  * @see bt_gatt_server_notification_sent_cb()
  */
 int bt_gatt_server_notify(bt_gatt_h characteristic, bool need_confirm,
-				bt_gatt_server_notification_sent_cb callback,
-				const char *device_address, void *user_data);
+		bt_gatt_server_notification_sent_cb callback, void *user_data);
 
 /**
  * @ingroup CAPI_NETWORK_BLUETOOTH_GATT_MODULE
